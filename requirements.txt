@@ -1,0 +1,7 @@
+dash == 2.7.1
+sentinelsat == 1.1.1
+netcdf4 == 1.6.2
+pandas == 1.5.3 
+numpy == 1.24.1
+shapely == 2.0.0
+matplotlib == 3.6
