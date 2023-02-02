@@ -202,7 +202,7 @@ def screening_plumes(ch4_obs,grid_lons,grid_lats,threshold_delta,min_pixelcount)
         
     return detected_plumes, detected_plumes_lons, detected_plumes_lats 
 
-def create_figures(grid_lon,grid_lat,fch4,detected_plumes, detected_plumes_lons,detected_plumes_lats):
+def create_figures(grid_lon,grid_lat,fch4,detected_plumes, detected_plumes_lons,detected_plumes_lats, date1, date2):
     Polygon_list = [] 
     max_enhance = [] 
     max_lons = [] 
@@ -246,10 +246,9 @@ def create_figures(grid_lon,grid_lat,fch4,detected_plumes, detected_plumes_lons,
     ax.set_xlim(np.min(grid_lon) -0.5, np.max(grid_lon)+0.5)
     ax.set_ylim(np.min(grid_lat) -0.5, np.max(grid_lat)+0.5)
     ax.stock_img()
-    ax.set_title("Valid TROPOMI Methane Observations on 20220928",fontsize = 9)
-    cbar = plt.colorbar(tro)
-    cbar.set_label('Column average methane mixing ratio (ppb)', rotation=270, labelpad=15,
-                  fontsize=9)
+    ax.set_title(f"Valid TROPOMI Methane Observation from {date1} to {date2}",fontsize = 8.5 )
+    cbar = plt.colorbar(tro, pad=0.02, orientation= "horizontal")
+    cbar.set_label('Column average methane mixing ratio (ppb)',fontsize=8.5)
     for pgon in Polygon_list:
         ax.add_geometries([pgon], crs=ccrs.PlateCarree(),facecolor="None",
                           edgecolor='black')
@@ -264,6 +263,6 @@ def create_figures(grid_lon,grid_lat,fch4,detected_plumes, detected_plumes_lons,
                                 "Maximum Enhancement":max_enhance,
                                 "longitude":max_lons,
                                 "latitude":max_lats})
-    df.to_csv(r"assets/plumes.csv",sep=',')
+    df.to_csv(fr"assets/plumes_{date1}_{date2}.csv",sep=',')
 
     return figure_path

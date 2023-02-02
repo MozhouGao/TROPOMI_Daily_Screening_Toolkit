@@ -25,8 +25,8 @@ app.layout = html.Div([
             } ),
     dcc.DatePickerRange(
     id='my-date-picker-range',
-    min_date_allowed=date(2019,9, 1),
-    max_date_allowed=date.today() + timedelta(days=-3),
+    min_date_allowed=date(2019, 1, 1),
+    max_date_allowed=date.today() + timedelta(days=3),
     initial_visible_month=date(2022, 9, 1),
     ),
     html.Br(),
@@ -192,6 +192,8 @@ def download_data(start_date,end_date,west_long,east_long,
 
 @app.callback(
     Output("plot1","src"),
+    Input('my-date-picker-range', 'start_date'),
+    Input('my-date-picker-range', 'end_date'),
     Input("west_long","value"),
     Input("east_long","value"),
     Input("south_lat","value"),
@@ -201,30 +203,38 @@ def download_data(start_date,end_date,west_long,east_long,
     Input('screening-val', 'n_clicks')
     )
 
-def screening(west_long,east_long,
+def screening(start_date,end_date, west_long,east_long,
                 south_lat,north_lat,thda,min_pix,n_clicks):
     if n_clicks > 0:
         if west_long and east_long and south_lat and north_lat is not None:
-            west_long = float(west_long)
-            east_long = float(east_long)
-            south_lat = float(south_lat)
-            north_lat = float(north_lat)
-            grid_lon,grid_lat,fch4 = Load_CH4(south_lat, north_lat, west_long, east_long, qa_pass = 0.5)
+            start_date_object = date.fromisoformat(start_date)
+            input_start_date = start_date_object.strftime('%Y%m%d')
+            end_date_object = date.fromisoformat(end_date)
+            input_end_date = end_date_object.strftime('%Y%m%d')
             
-            if thda and min_pix is not None:
-                thda = int(thda)
-                min_pix = int(min_pix)
-                detected_plumes, detected_plumes_lons, detected_plumes_lats = screening_plumes(fch4,
-                                                                                       grid_lon,
-                                                                                       grid_lat,
-                                                                                       thda,
-                                                                                       min_pix)
-                if len(detected_plumes) > 0: 
-                    figure_path = create_figures(grid_lon,grid_lat,fch4,detected_plumes,detected_plumes_lons,detected_plumes_lats)
-                    return figure_path
-                else: 
-                    return r"assets/pic.JPG"
-                    
+            if west_long and east_long and south_lat and north_lat is not None:
+                west_long = float(west_long)
+                east_long = float(east_long)
+                south_lat = float(south_lat)
+                north_lat = float(north_lat)
+                grid_lon,grid_lat,fch4 = Load_CH4(south_lat, north_lat, west_long, east_long, qa_pass = 0.5)
+                
+                if thda and min_pix is not None:
+                    thda = int(thda)
+                    min_pix = int(min_pix)
+                    detected_plumes, detected_plumes_lons, detected_plumes_lats = screening_plumes(fch4,
+                                                                                           grid_lon,
+                                                                                           grid_lat,
+                                                                                           thda,
+                                                                                           min_pix)
+                    if len(detected_plumes) > 0: 
+                        figure_path = create_figures(grid_lon,grid_lat,fch4,detected_plumes,
+                                                     detected_plumes_lons,detected_plumes_lats,
+                                                     input_start_date,input_end_date)
+                        return figure_path
+                    else: 
+                        return r"assets/pic.JPG"
+                
             
 if __name__ == "__main__":
      app.run_server(debug=False)
