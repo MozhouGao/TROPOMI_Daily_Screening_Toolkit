@@ -253,7 +253,12 @@ def create_figures(grid_lon,grid_lat,fch4,detected_plumes, detected_plumes_lons,
         ax.add_geometries([pgon], crs=ccrs.PlateCarree(),facecolor="None",
                           edgecolor='black')
     
-    figure_name =  fr"assets/TROPOMI_data_{date1}_{date2}_{np.min(grid_lon)}_{np.max(grid_lon)}_{np.min(grid_lat)}_{np.max(grid_lat)}.jpg"
+    maxlon = np.round(np.max(grid_lon))
+    minlon = np.round(np.min(grid_lon)) 
+    maxlat = np.round(np.max(grid_lat)) 
+    minlat = np.round(np.min(grid_lat)) 
+    
+    figure_name =  fr"assets/TROPOMI_data_{date1}_{date2}_{maxlon}_{minlon}_{maxlat}_{minlat}.jpg"
     plt.savefig(figure_name,dpi=300)
     figure_path =  figure_name
 
@@ -264,6 +269,6 @@ def create_figures(grid_lon,grid_lat,fch4,detected_plumes, detected_plumes_lons,
                                 "Maximum Enhancement":max_enhance,
                                 "longitude":max_lons,
                                 "latitude":max_lats})
-    df.to_csv(fr"assets/plumes_{date1}_{date2}_{np.min(grid_lon)}_{np.max(grid_lon)}_{np.min(grid_lat)}_{np.max(grid_lat)}.csv",sep=',')
+    df.to_csv(fr"assets/plumes_{date1}_{date2}_{maxlon}_{minlon}_{maxlat}_{minlat}.csv",sep=',')
 
     return figure_path
