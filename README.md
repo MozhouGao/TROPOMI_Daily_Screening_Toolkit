@@ -13,5 +13,32 @@ Install packages from command Shell:
   -   conda install -c conda-forge cartopy
   
   
+## Internal default settings
+The datasets are the Level-2 user products from the TROPOMI instrument onboard the Sentinel-5P satellite. Original data files are obtained from the Sentinels Scientific Data Hub (currently known as The Copernicus Open Access Hub). The atmospheric methane concentrations are indicated by the column averaged dry air mole mixing ratio of methane (XCH4) with the unit of ppb. For each data file, the methane_mixing_ratio_bias_corrected was retrieved and remapped on a 0.05-deg by 0.05-deg map. To ensure that the remapped observations are valid, only quality assured data points (i.e., the qa_value greater than 0.5, as recommended by the data provider) were used in the plume screening and mapping. The basic workflow in this toolkit is 1) automatically downloading TROPOMI data files, 2) loading methane observations, 3) segmenting methane anomaly, 4) recording suspect methane emitting region, and 5) finalizing results.
+The plume screening algorithm originally proposed by Lauvaux et al. (2022) and was simplified to screen the suspect methane plumes and highlight the regions with high probability of detecting methane ultra emitters. In the plume screening algorithm, the suspect plume screening is patch-based. The geographic span of each patch is 0.5-deg by 0.5-deg (roughly 55km by 55km at the low latitudes). For each patch, the mean, median, and standard deviation of the observed XCH4 is calculated to assess the distributions of methane observations and further find the anomaly to indicate the presence of suspect methane plumes. 
+
+### Background XCH4 
+Determination of the background XCH4 is critical for the patch-based plume screening, considering this could significantly influence the calculations of methane enhancement. In contrast to taking the value of the pixel in the vicinity of a detected plume in the upwind direction, the background XCH4 during the patch-based plume screening in this toolkit is computed according to a matrix $ ((XCH4,mean- XCH4,median)/ XCH4,std)$ indicating the skewness of the pixel distribution. For the patches with XCH4 values are strongly skewed ((XCH4,mean- XCH4,median)/ XCH4,std > 0.3), background XCH4 is the median of the patch. Otherwise, the background XCH4 is computed as. This method is commonly used for robust background estimation in noisy astronomical images analysis. The  s a tunable parameter, which is typically set at 2.5 to successfully capture some of the well-known methane emission events (Lauvaux et al., 2022).
+
+## User defined parameters 
+A well-fitted plume shape is another factor that may influence the identification of the methane emission plume. In respect of plume shape, two parameters are used to reflect the fitness of the detected anomalies to a suspect plume, which are the mean XCH4 enhancement over the pixels with positive enhancements (ΔXCH4,thr) and the number of valid pixels with positive enhancements (n). Under the conditions that these two parameters fulfilled the requirements, a suspect plume will be tagged. The users could define these two parameters based on their demand to obtain either conservative or radical results (e.g., the larger values for ΔXCH4,thr and n, the more conservative results would be). 
+
+## Quick guide
+### Select the date
+Please specify an individual date or a period for daily screening Multiple days screening may cause longer data processing time. 
+Note: If a period is selected, only the screening result of the last day will be displayed on the webpage. For full list of the daily screening results, check the local path:  TROPOMI_Daily_Screening_Toolkit-main\assets.
+### Define regions
+Currently the toolkit only supports screening over a rectangular region. Click <Define polygon> to confirm.
+Longitude range: -180 ~ 180, latitude range: -90 ~ 90.
+### Download Level-2 TROPOMI methane observations
+Click <Download> to download the data files to the local path: TROPOMI_Daily_Screening_Toolkit-main\ TROPOMI_data.
+### Start screening
+Enter the Threshold delta (ΔXCH4,thr) and Minimum pixel count (n). Then click <Start screening> to kick off the daily plume screening. The screening time may vary with region size and number of days. Please do NOT hit on <Start screening> multiple times. Thanks for your patience.
+
+## About the screening results:
+If any suspect methane plumes are detected, a methane concentration map1 with the highlighted plume patches will be provided in the tool. If applicable, the potential locations of the detected methene emissions sources2 would be provided in the format of .csv file. The users could retrieve the results, including the maps and list of suspect sources, from the local path: TROPOMI_Daily_Screening_Toolkit-main\assets
+- The daily averaged methane mixing ratio is calculated based on multiple observations from the TROPOspheric Monitoring Instrument (TROPOMI, i.e., satellite instrument on board the Copernicus Sentinel-5 Precursor satellite. Only valid observations (i.e., observations with qa_value greater than 0.5) were used. However, data filtering by qa_value could not guarantee that all the bad data points are eliminated.
+- The location of the suspect plume is determined as patch based. For each 11×11 patch, we tag the grid cell (0.05° × 0.05°) with the maximum observed XCH4 as the potential location of the detected plume. As limited by the spatial resolution of TROPOMI observations (i.e., 7 km × 5.5 km) and the completeness of the plume puzzles, the "locations" indicated by this toolkit refer to the suspect regions with higher probability of detecting methane emissions.
+
 
 
