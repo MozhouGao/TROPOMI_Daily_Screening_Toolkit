@@ -31,14 +31,19 @@ Note: If a period is selected, only the screening result of the last day will be
 Currently the toolkit only supports screening over a rectangular region. Click <Define polygon> to confirm.
 Longitude range: -180 ~ 180, latitude range: -90 ~ 90.
 ### Download Level-2 TROPOMI methane observations
-Click <Download> to download the data files to the local path: TROPOMI_Daily_Screening_Toolkit-main\ TROPOMI_data.
+Click <Download> to download the data files to the local path: ~/TROPOMI_Daily_Screening_Toolkit-main/TROPOMI_data.
 ### Start screening
 Enter the Threshold delta (ΔXCH4,thr) and Minimum pixel count (n). Then click <Start screening> to kick off the daily plume screening. The screening time may vary with region size and number of days. Please do NOT hit on <Start screening> multiple times. Thanks for your patience.
 
 ## About the screening results:
-If any suspect methane plumes are detected, a methane concentration map1 with the highlighted plume patches will be provided in the tool. If applicable, the potential locations of the detected methene emissions sources2 would be provided in the format of .csv file. The users could retrieve the results, including the maps and list of suspect sources, from the local path: TROPOMI_Daily_Screening_Toolkit-main\assets
+If any suspect methane plumes are detected, a methane concentration map1 with the highlighted plume patches will be provided in the tool. If applicable, the potential locations of the detected methene emissions sources2 would be provided in the format of .csv file. The users could retrieve the results, including the maps and list of suspect sources, from the local path: ~/TROPOMI_Daily_Screening_Toolkit-main/assets
 - The daily averaged methane mixing ratio is calculated based on multiple observations from the TROPOspheric Monitoring Instrument (TROPOMI, i.e., satellite instrument on board the Copernicus Sentinel-5 Precursor satellite. Only valid observations (i.e., observations with qa_value greater than 0.5) were used. However, data filtering by qa_value could not guarantee that all the bad data points are eliminated.
 - The location of the suspect plume is determined as patch based. For each 11×11 patch, we tag the grid cell (0.05° × 0.05°) with the maximum observed XCH4 as the potential location of the detected plume. As limited by the spatial resolution of TROPOMI observations (i.e., 7 km × 5.5 km) and the completeness of the plume puzzles, the "locations" indicated by this toolkit refer to the suspect regions with higher probability of detecting methane emissions.
 
+## Feedback
+For any questions and concerns may you have about this toolkit, please feel free to get in touch with zhenyu.xing2@ucalgary.ca and mozhou.gao@ucalgary.ca.
+
+## References
+Lauvaux, T., Giron, C., Mazzolini, M., d’Aspremont, A., Duren, R., Cusworth, D., Shindell, D. and Ciais, P., 2022. Global assessment of oil and gas methane ultra-emitters. Science, 375(6580), pp.557-561.
 
 
