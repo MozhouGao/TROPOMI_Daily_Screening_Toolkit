@@ -7,6 +7,7 @@ from sentinelsat import SentinelAPI
 import pandas as pd 
 import cartopy.crs as ccrs
 import cartopy.feature as cf
+from datetime import timedelta
 from shapely.geometry.polygon import Polygon
 
 def download_TROPOMI_CH4_L2_data(start_date,end_date,west_lon, east_lon, south_lat, north_lat): 
@@ -85,15 +86,28 @@ def nanargmax(a):
         multi_idx = np.unravel_index(idx, a.shape)
     return multi_idx
 
-def find_nc_filenames( path_to_dir, suffix=".nc" ):
+def find_nc_filenames( path_to_dir, start_date, end_date, suffix=".nc" ):
+    
     filenames = os.listdir(path_to_dir)
-    return [ filename for filename in filenames if filename.endswith( suffix ) ]
+    
+    date_list = [] 
+    while start_date.day <= end_date.day: 
+        start_date_str = start_date.strftime('%Y%m%d')
+        date_list.append(start_date_str )
+        start_date += timedelta(days = 1)
+
+    file_list = [] 
+    for filename in filenames: 
+        sample_time = filename.split("___")[1].split("_")[1].split('T')[0]
+        if filename.endswith(suffix) and sample_time in date_list:
+            file_list.append(filename)
+    return file_list
 
 def find_nearest(array, value):     
     idx = np.unravel_index((np.abs(array - value)).argmin(),array.shape)     
     return idx
 
-def Load_CH4(minlat, maxlat, minlon, maxlon, qa_pass = 0.5): 
+def Load_CH4(minlat, maxlat, minlon, maxlon, start_date, end_date, qa_pass = 0.5): 
     lons = np.arange(minlon, maxlon + 0.05, 0.05)
     lats = np.arange(minlat, maxlat + 0.05, 0.05)
     grid_lon,grid_lat = np.meshgrid(lons, lats)
@@ -103,7 +117,7 @@ def Load_CH4(minlat, maxlat, minlon, maxlon, qa_pass = 0.5):
     # find file path 
     local_path = os.path.abspath(f"{os.getcwd()}/TROPOMI_data")
     
-    file_list = find_nc_filenames(local_path)
+    file_list = find_nc_filenames(local_path, start_date, end_date)
     
     all_ch4 = [] 
     for file_name in file_list: 
@@ -246,7 +260,7 @@ def create_figures(grid_lon,grid_lat,fch4,detected_plumes, detected_plumes_lons,
     ax.set_xlim(np.min(grid_lon) -0.5, np.max(grid_lon)+0.5)
     ax.set_ylim(np.min(grid_lat) -0.5, np.max(grid_lat)+0.5)
     ax.stock_img()
-    ax.set_title(f"Valid TROPOMI Methane Observation from {date1} to {date2}",fontsize = 8.5 )
+    ax.set_title(f"Valid TROPOMI Methane Observations from {date1} to {date2}",fontsize = 8.5 )
     cbar = plt.colorbar(tro, pad=0.02, orientation= "horizontal")
     cbar.set_label('Column average methane mixing ratio (ppb)',fontsize=8.5)
     for pgon in Polygon_list:

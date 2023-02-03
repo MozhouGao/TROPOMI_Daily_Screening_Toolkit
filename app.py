@@ -46,6 +46,7 @@ app.layout = html.Div([
                 style ={"margin-left": "470px"}),
          html.Br(),
          dcc.Input(id="north_lat",
+                   type='number',
                    style ={"margin-left": "420px",
                            "margin-bottom":"20px"
                        }),
@@ -54,15 +55,18 @@ app.layout = html.Div([
                 style ={"margin-left": "200px"
                     }),
          dcc.Input(id='west_long',
+                   type='number',
                    style = {
                        "margin-left": "10px"
                        }),
         dcc.Input(id='east_long',
+                  type='number',
                   style = {
                       "margin-left": "100px"
                       }),
         html.Br(),
         dcc.Input(id = "south_lat",
+                  type='number',
                   style ={"margin-left": "420px",
                           "margin-top":"20px"
                       })]),
@@ -96,12 +100,12 @@ app.layout = html.Div([
     html.Div(
         [html.I("Threshold delta"),
           html.Br(),
-        dcc.Input(id='thda')]),
+        dcc.Input(id='thda',type='number')]),
 
     html.Div(
         [html.I("Minimum pixel count"),
           html.Br(),
-        dcc.Input(id='min_pix')]),
+        dcc.Input(id='min_pix', type='number',)]),
     html.Div([html.Br()]),
     html.Button("Start screening",id="screening-val",n_clicks=0),
     html.Div([html.Br()]),
@@ -141,9 +145,19 @@ def update_output1(start_date,end_date):
 def update_output2(west_long,east_long,south_lat,north_lat,n_clicks):
     region_prefix = "You have entered: "
     if west_long and east_long is not None: 
-        region_prefix = region_prefix + "Longitude range: " + "{} - {}".format(west_long,east_long)
+        west_long = float(west_long)
+        east_long = float(east_long)
+        if -180 < west_long < 180 and -180 < east_long < 180:  
+            region_prefix = region_prefix + "Longitude range: " + "{} - {} degrees".format(west_long,east_long)
+        else: 
+            region_prefix = "longitude is ranging from -180 to 180 degrees"
     if south_lat and north_lat is not None: 
-        region_prefix = region_prefix + "|| Latitude range: " + "{} - {}".format(south_lat,north_lat)
+        south_lat = float(south_lat)
+        north_lat = float(north_lat)
+        if -90 < south_lat < 90 and -90 < north_lat < 90:   
+            region_prefix = region_prefix + "|| Latitude range: " + "{} - {} degrees".format(south_lat,north_lat)
+        else: 
+            region_prefix = "latitude is ranging from -90 to 90 degrees"
     if len(region_prefix) == len('You have entered: '):
         return 'Please enter longitudes and latitudes to define your polygon'
     else:
@@ -217,7 +231,8 @@ def screening(start_date,end_date, west_long,east_long,
                 east_long = float(east_long)
                 south_lat = float(south_lat)
                 north_lat = float(north_lat)
-                grid_lon,grid_lat,fch4 = Load_CH4(south_lat, north_lat, west_long, east_long, qa_pass = 0.5)
+                grid_lon,grid_lat,fch4 = Load_CH4(south_lat, north_lat, west_long, east_long, 
+                                                  start_date_object,end_date_object, qa_pass = 0.5)
                 
                 if thda and min_pix is not None:
                     thda = int(thda)
