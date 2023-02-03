@@ -25,8 +25,8 @@ app.layout = html.Div([
             } ),
     dcc.DatePickerRange(
     id='my-date-picker-range',
-    min_date_allowed=date(2019,9, 1),
-    max_date_allowed=date.today() + timedelta(days=-3),
+    min_date_allowed=date(2019, 1, 1),
+    max_date_allowed=date.today() + timedelta(days=3),
     initial_visible_month=date(2022, 9, 1),
     ),
     html.Br(),
@@ -46,6 +46,7 @@ app.layout = html.Div([
                 style ={"margin-left": "470px"}),
          html.Br(),
          dcc.Input(id="north_lat",
+                   type='number',
                    style ={"margin-left": "420px",
                            "margin-bottom":"20px"
                        }),
@@ -54,15 +55,18 @@ app.layout = html.Div([
                 style ={"margin-left": "200px"
                     }),
          dcc.Input(id='west_long',
+                   type='number',
                    style = {
                        "margin-left": "10px"
                        }),
         dcc.Input(id='east_long',
+                  type='number',
                   style = {
                       "margin-left": "100px"
                       }),
         html.Br(),
         dcc.Input(id = "south_lat",
+                  type='number',
                   style ={"margin-left": "420px",
                           "margin-top":"20px"
                       })]),
@@ -96,12 +100,12 @@ app.layout = html.Div([
     html.Div(
         [html.I("Threshold delta"),
           html.Br(),
-        dcc.Input(id='thda')]),
+        dcc.Input(id='thda',type='number')]),
 
     html.Div(
         [html.I("Minimum pixel count"),
           html.Br(),
-        dcc.Input(id='min_pix')]),
+        dcc.Input(id='min_pix', type='number',)]),
     html.Div([html.Br()]),
     html.Button("Start screening",id="screening-val",n_clicks=0),
     html.Div([html.Br()]),
@@ -141,9 +145,19 @@ def update_output1(start_date,end_date):
 def update_output2(west_long,east_long,south_lat,north_lat,n_clicks):
     region_prefix = "You have entered: "
     if west_long and east_long is not None: 
-        region_prefix = region_prefix + "Longitude range: " + "{} - {}".format(west_long,east_long)
+        west_long = float(west_long)
+        east_long = float(east_long)
+        if -180 < west_long < 180 and -180 < east_long < 180:  
+            region_prefix = region_prefix + "Longitude range: " + "{} - {} degrees".format(west_long,east_long)
+        else: 
+            region_prefix = "longitude is ranging from -180 to 180 degrees"
     if south_lat and north_lat is not None: 
-        region_prefix = region_prefix + "|| Latitude range: " + "{} - {}".format(south_lat,north_lat)
+        south_lat = float(south_lat)
+        north_lat = float(north_lat)
+        if -90 < south_lat < 90 and -90 < north_lat < 90:   
+            region_prefix = region_prefix + "|| Latitude range: " + "{} - {} degrees".format(south_lat,north_lat)
+        else: 
+            region_prefix = "latitude is ranging from -90 to 90 degrees"
     if len(region_prefix) == len('You have entered: '):
         return 'Please enter longitudes and latitudes to define your polygon'
     else:
@@ -192,6 +206,8 @@ def download_data(start_date,end_date,west_long,east_long,
 
 @app.callback(
     Output("plot1","src"),
+    Input('my-date-picker-range', 'start_date'),
+    Input('my-date-picker-range', 'end_date'),
     Input("west_long","value"),
     Input("east_long","value"),
     Input("south_lat","value"),
@@ -201,30 +217,39 @@ def download_data(start_date,end_date,west_long,east_long,
     Input('screening-val', 'n_clicks')
     )
 
-def screening(west_long,east_long,
+def screening(start_date,end_date, west_long,east_long,
                 south_lat,north_lat,thda,min_pix,n_clicks):
     if n_clicks > 0:
         if west_long and east_long and south_lat and north_lat is not None:
-            west_long = float(west_long)
-            east_long = float(east_long)
-            south_lat = float(south_lat)
-            north_lat = float(north_lat)
-            grid_lon,grid_lat,fch4 = Load_CH4(south_lat, north_lat, west_long, east_long, qa_pass = 0.5)
+            start_date_object = date.fromisoformat(start_date)
+            input_start_date = start_date_object.strftime('%Y%m%d')
+            end_date_object = date.fromisoformat(end_date)
+            input_end_date = end_date_object.strftime('%Y%m%d')
             
-            if thda and min_pix is not None:
-                thda = int(thda)
-                min_pix = int(min_pix)
-                detected_plumes, detected_plumes_lons, detected_plumes_lats = screening_plumes(fch4,
-                                                                                       grid_lon,
-                                                                                       grid_lat,
-                                                                                       thda,
-                                                                                       min_pix)
-                if len(detected_plumes) > 0: 
-                    figure_path = create_figures(grid_lon,grid_lat,fch4,detected_plumes,detected_plumes_lons,detected_plumes_lats)
-                    return figure_path
-                else: 
-                    return r"assets/pic.JPG"
-                    
+            if west_long and east_long and south_lat and north_lat is not None:
+                west_long = float(west_long)
+                east_long = float(east_long)
+                south_lat = float(south_lat)
+                north_lat = float(north_lat)
+                grid_lon,grid_lat,fch4 = Load_CH4(south_lat, north_lat, west_long, east_long, 
+                                                  start_date_object,end_date_object, qa_pass = 0.5)
+                
+                if thda and min_pix is not None:
+                    thda = int(thda)
+                    min_pix = int(min_pix)
+                    detected_plumes, detected_plumes_lons, detected_plumes_lats = screening_plumes(fch4,
+                                                                                           grid_lon,
+                                                                                           grid_lat,
+                                                                                           thda,
+                                                                                           min_pix)
+                    if len(detected_plumes) > 0: 
+                        figure_path = create_figures(grid_lon,grid_lat,fch4,detected_plumes,
+                                                     detected_plumes_lons,detected_plumes_lats,
+                                                     input_start_date,input_end_date)
+                        return figure_path
+                    else: 
+                        return r"assets/pic.JPG"
+                
             
 if __name__ == "__main__":
      app.run_server(debug=False)
