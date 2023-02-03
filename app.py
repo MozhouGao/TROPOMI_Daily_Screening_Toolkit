@@ -28,7 +28,7 @@ app.layout = html.Div([
                 'color': '#415F4A',
                 "font-family":"cursive"
             } ),
-    html.P("Please specify an individual date or a period for daily screening Multiple days screening may cause longer data processing time. Note: If a period is selected, only the screening result of the last day will be displayed on the webpage. For full list of the daily screening results, check the local path: ~/TROPOMI_Daily_Screening_Toolkit-main/assets."),
+    html.P("Please specify an individual date or a period for daily screening Multiple days screening may cause longer data processing time. Note: If a period is selected, only the screening result of the last day will be displayed on the webpage. For full list of the daily screening results, check the local path: ~/TROPOMI_Daily_Screening_Toolkit/assets."),
     
     dcc.DatePickerRange(
     id='my-date-picker-range',
@@ -90,7 +90,7 @@ app.layout = html.Div([
                 'color': '#415F4A',
                 "font-family":"cursive"
             }),
-    html.P("Click to download the data files to the local path: ~/TROPOMI_Daily_Screening_Toolkit-main/TROPOMI_data."),
+    html.P("Click to download the data files to the local path: ~/TROPOMI_Daily_Screening_Toolkit/TROPOMI_data."),
     html.Div([dcc.Loading(
                    id="loading",
                    children=[html.Div([html.Div(id="loading-output")])],
@@ -241,16 +241,20 @@ def screening(start_date,end_date, west_long,east_long,
                 
                 cdate = start_date_object
                 fch4_list = [] 
+                fwind_list = []
+                fpressure_list = []
                 grid_lons_list = [] 
                 grid_lats_list = [] 
                 Dates = [] 
                 while cdate.day < end_date_object.day: 
                 
-                    grid_lon,grid_lat,fch4 = Load_CH4(south_lat, north_lat, west_long, east_long, 
+                    grid_lon,grid_lat,fch4,fwind,fpressure = Load_CH4(south_lat, north_lat, west_long, east_long, 
                                                   cdate, qa_pass = 0.5)
                     grid_lons_list.append(grid_lon)
                     grid_lats_list.append(grid_lat)
                     fch4_list.append(fch4)
+                    fwind_list.append(fwind)
+                    fpressure_list.append(fpressure)
                     Dates.append(cdate.strftime('%Y%m%d'))
                     cdate += timedelta(days = 1)
                 
@@ -260,17 +264,19 @@ def screening(start_date,end_date, west_long,east_long,
                     
                     path_list = [] 
                     
-                    for ele in zip (fch4_list,grid_lons_list,grid_lats_list,Dates):
+                    for ele in zip (fch4_list,fwind_list,fpressure_list, grid_lons_list,grid_lats_list,Dates):
                     
-                        detected_plumes, detected_plumes_lons, detected_plumes_lats = screening_plumes(ele[0],
-                                                                                               ele[1],
-                                                                                               ele[2],
-                                                                                               thda,
-                                                                                               min_pix)
+                        detected_plumes, detected_plume_wind, detected_plume_pressure,detected_plumes_lons, detected_plumes_lats = screening_plumes(ele[0],
+                                                                                                                                                   ele[1],
+                                                                                                                                                   ele[2],
+                                                                                                                                                   ele[3],
+                                                                                                                                                   ele[4],
+                                                                                                                                                   thda,
+                                                                                                                                                   min_pix)
                         if len(detected_plumes) > 0: 
-                            figure_path = generate_results(ele[1],ele[2],ele[0],detected_plumes,
-                                                         detected_plumes_lons,detected_plumes_lats,
-                                                         ele[3])
+                            figure_path = generate_results(ele[3],ele[4],ele[0],detected_plumes,detected_plume_wind, 
+                                                           detected_plume_pressure, detected_plumes_lons,detected_plumes_lats,
+                                                           ele[5])
                             
                             path_list.append(figure_path)
                     
