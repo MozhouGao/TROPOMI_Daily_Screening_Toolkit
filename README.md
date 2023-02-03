@@ -26,7 +26,7 @@ A well-fitted plume shape is another factor that may influence the identificatio
 ## Quick guide
 ### Select the date
 Please specify an individual date or a period for daily screening Multiple days screening may cause longer data processing time. 
-Note: If a period is selected, only the screening result of the last day will be displayed on the webpage. For full list of the daily screening results, check the local path:  TROPOMI_Daily_Screening_Toolkit-main\assets.
+Note: If a period is selected, only the screening result of the last day will be displayed on the webpage. For full list of the daily screening results, check the local path: ~/TROPOMI_Daily_Screening_Toolkit-main/assets.
 ### Define regions
 Currently the toolkit only supports screening over a rectangular region. Click <Define polygon> to confirm.
 Longitude range: -180 ~ 180, latitude range: -90 ~ 90.
