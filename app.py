@@ -4,25 +4,32 @@ import time
 from sentinelsat import SentinelAPI
 from dash import Dash, Input, Output, State, html, dcc, dash_table, callback
 from datetime import date,timedelta
-from TROPOMI_toolkit import download_TROPOMI_CH4_L2_data,Load_CH4,screening_plumes,create_figures
+from TROPOMI_toolkit import download_TROPOMI_CH4_L2_data,Load_CH4,screening_plumes,generate_results
 
 app = Dash(__name__)
 
 app.layout = html.Div([
     html.H1(
-        children='TROPOMI Plume Screener',
+        children='TROPOMI Daily Screening Toolkit - V1.0',
         style={
             'textAlign': 'center',
             'color': '#415F4A',
             "font-family":"cursive"
         }
     ),
-    html.H3(children="1. Select Date",
+    
+    html.Div([
+    html.P('This toolkit is developed to automatically screen the suspect methane (CH4) plumes over a user defined region based on the public accessible satellite observations (i.e., methane dry air mixing ratio from TROPOMI). Users are required to input several parameters to complete the screening process, including: the screening date(s), region boundaries, screening criteria (i.e., threshold enhancement, number of valid plume pixels. The output of each screening run is a XCH4 concentration map by highlighting the regions with high probability of detecting suspect methane plume(s). A list of the potential source locations is also available from the screening result. The noteworthy point is that this toolkit is designed neither for pinpointing the emission source at the facility or component level, nor for screening of small methane leaks (generally <25 tons/hour). For source attributions of the detected suspect plumes, the follow-up targeted fine-scale observations over the regions with high probability of detecting suspect methane plume(s) are required.'),
+            ]),
+    
+    html.H3(children="1. Select the date",
             style={
                 'textAlign': 'left',
                 'color': '#415F4A',
                 "font-family":"cursive"
             } ),
+    html.P("Please specify an individual date or a period for daily screening Multiple days screening may cause longer data processing time. Note: If a period is selected, only the screening result of the last day will be displayed on the webpage. For full list of the daily screening results, check the local path: ~/TROPOMI_Daily_Screening_Toolkit-main/assets."),
+    
     dcc.DatePickerRange(
     id='my-date-picker-range',
     min_date_allowed=date(2019, 1, 1),
@@ -34,12 +41,13 @@ app.layout = html.Div([
     html.Div(id='date-picker-range'),
     
     html.Div([html.Br()]),
-    html.H3(children="2. Define Regions",
+    html.H3(children="2. Define regions",
             style={
                 'textAlign': 'left',
                 'color': '#415F4A',
                 "font-family":"cursive"
             }),
+    html.P("Currently the toolkit only supports screening over a rectangular region. Click to confirm. Longitude range: -180 ~ 180, latitude range: -90 ~ 90."),
     
     html.Div(
         [html.I("Latitudes",
@@ -82,6 +90,7 @@ app.layout = html.Div([
                 'color': '#415F4A',
                 "font-family":"cursive"
             }),
+    html.P("Click to download the data files to the local path: ~/TROPOMI_Daily_Screening_Toolkit-main/TROPOMI_data."),
     html.Div([dcc.Loading(
                    id="loading",
                    children=[html.Div([html.Div(id="loading-output")])],
@@ -96,7 +105,7 @@ app.layout = html.Div([
                 'color': '#415F4A',
                 "font-family":"cursive"
             }),
-
+    html.P("Enter the Threshold delta (ΔXCH4,thr; defaut = 15) and Minimum pixel count (n; defaut = 1). Then click to kick off the daily plume screening. The screening time may vary with region size and number of days. Please do NOT hit on multiple times. Thanks for your patience."),
     html.Div(
         [html.I("Threshold delta"),
           html.Br(),
@@ -222,31 +231,52 @@ def screening(start_date,end_date, west_long,east_long,
     if n_clicks > 0:
         if west_long and east_long and south_lat and north_lat is not None:
             start_date_object = date.fromisoformat(start_date)
-            input_start_date = start_date_object.strftime('%Y%m%d')
             end_date_object = date.fromisoformat(end_date)
-            input_end_date = end_date_object.strftime('%Y%m%d')
             
             if west_long and east_long and south_lat and north_lat is not None:
                 west_long = float(west_long)
                 east_long = float(east_long)
                 south_lat = float(south_lat)
                 north_lat = float(north_lat)
-                grid_lon,grid_lat,fch4 = Load_CH4(south_lat, north_lat, west_long, east_long, 
-                                                  start_date_object,end_date_object, qa_pass = 0.5)
+                
+                cdate = start_date_object
+                fch4_list = [] 
+                grid_lons_list = [] 
+                grid_lats_list = [] 
+                Dates = [] 
+                while cdate.day < end_date_object.day: 
+                
+                    grid_lon,grid_lat,fch4 = Load_CH4(south_lat, north_lat, west_long, east_long, 
+                                                  cdate, qa_pass = 0.5)
+                    grid_lons_list.append(grid_lon)
+                    grid_lats_list.append(grid_lat)
+                    fch4_list.append(fch4)
+                    Dates.append(cdate.strftime('%Y%m%d'))
+                    cdate += timedelta(days = 1)
                 
                 if thda and min_pix is not None:
                     thda = int(thda)
                     min_pix = int(min_pix)
-                    detected_plumes, detected_plumes_lons, detected_plumes_lats = screening_plumes(fch4,
-                                                                                           grid_lon,
-                                                                                           grid_lat,
-                                                                                           thda,
-                                                                                           min_pix)
-                    if len(detected_plumes) > 0: 
-                        figure_path = create_figures(grid_lon,grid_lat,fch4,detected_plumes,
-                                                     detected_plumes_lons,detected_plumes_lats,
-                                                     input_start_date,input_end_date)
-                        return figure_path
+                    
+                    path_list = [] 
+                    
+                    for ele in zip (fch4_list,grid_lons_list,grid_lats_list,Dates):
+                    
+                        detected_plumes, detected_plumes_lons, detected_plumes_lats = screening_plumes(ele[0],
+                                                                                               ele[1],
+                                                                                               ele[2],
+                                                                                               thda,
+                                                                                               min_pix)
+                        if len(detected_plumes) > 0: 
+                            figure_path = generate_results(ele[1],ele[2],ele[0],detected_plumes,
+                                                         detected_plumes_lons,detected_plumes_lats,
+                                                         ele[3])
+                            
+                            path_list.append(figure_path)
+                    
+                    if len(path_list)>0:
+                        return path_list[-1]
+                    
                     else: 
                         return r"assets/pic.JPG"
                 
