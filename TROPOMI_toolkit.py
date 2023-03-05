@@ -7,8 +7,8 @@ from sentinelsat import SentinelAPI
 import pandas as pd 
 import cartopy.crs as ccrs
 import cartopy.feature as cf
-from datetime import timedelta
 from shapely.geometry.polygon import Polygon
+from math import sqrt
 
 def download_TROPOMI_CH4_L2_data(start_date,end_date,west_lon, east_lon, south_lat, north_lat): 
     
@@ -86,15 +86,12 @@ def nanargmax(a):
         multi_idx = np.unravel_index(idx, a.shape)
     return multi_idx
 
-def find_nc_filenames( path_to_dir, start_date, end_date, suffix=".nc" ):
+def find_nc_filenames( path_to_dir, date, suffix=".nc" ):
     
     filenames = os.listdir(path_to_dir)
-    
-    date_list = [] 
-    while start_date.day <= end_date.day: 
-        start_date_str = start_date.strftime('%Y%m%d')
-        date_list.append(start_date_str )
-        start_date += timedelta(days = 1)
+    date_str = date.strftime('%Y%m%d')
+    date_list = [date_str] 
+
 
     file_list = [] 
     for filename in filenames: 
@@ -107,7 +104,21 @@ def find_nearest(array, value):
     idx = np.unravel_index((np.abs(array - value)).argmin(),array.shape)     
     return idx
 
-def Load_CH4(minlat, maxlat, minlon, maxlon, start_date, end_date, qa_pass = 0.5): 
+def quantification_mass_balance(enhancements,winds,pressures,lons,lats): 
+    lons,lats = np.array(lons), np.array(lats)
+    enhancements = np.array(enhancements)
+    winds = np.array(winds) * 3.6
+    pressures = np.array(pressures)
+    
+    L = 0.05 * 111.32 * np.cos(lats*np.pi/180)*111.31*0.05
+    Ls = [sqrt(l) for l in L] 
+    Ls = np.array(Ls)
+    
+    Q = enhancements * 5.345 * (pressures/1013) * Ls * winds * 2 
+    
+    return Q 
+
+def Load_CH4(minlat, maxlat, minlon, maxlon, date, qa_pass = 0.5): 
     lons = np.arange(minlon, maxlon + 0.05, 0.05)
     lats = np.arange(minlat, maxlat + 0.05, 0.05)
     grid_lon,grid_lat = np.meshgrid(lons, lats)
@@ -117,8 +128,9 @@ def Load_CH4(minlat, maxlat, minlon, maxlon, start_date, end_date, qa_pass = 0.5
     # find file path 
     local_path = os.path.abspath(f"{os.getcwd()}/TROPOMI_data")
     
-    file_list = find_nc_filenames(local_path, start_date, end_date)
-    
+    file_list = find_nc_filenames(local_path, date)
+    all_wind = [] 
+    all_pressure = [] 
     all_ch4 = [] 
     for file_name in file_list: 
         # for each file, read data 
@@ -129,7 +141,17 @@ def Load_CH4(minlat, maxlat, minlon, maxlon, start_date, end_date, qa_pass = 0.5
         latitudes = data.groups['PRODUCT']['latitude'][:].data[0,:,:]
         longitudes = data.groups['PRODUCT']['longitude'][:].data[0,:,:]
         qa_value = data.groups['PRODUCT']['qa_value'][:].data[0,:,:]
+        u = data.groups['PRODUCT'].groups["SUPPORT_DATA"]["INPUT_DATA"]["eastward_wind"][0,:,:]
+        v = data.groups['PRODUCT'].groups["SUPPORT_DATA"]["INPUT_DATA"]["northward_wind"][0,:,:]
+        surface_pressure = data.groups['PRODUCT'].groups["SUPPORT_DATA"]["INPUT_DATA"]["surface_pressure"][0,:,:]
         data.close()
+        
+        # caluclate wind speed 
+        ws = (u**2 + v**2)**0.5 
+        
+        # surface pressure  
+        surface_pressure = surface_pressure / 100 
+        
         # find dims of xch4 
         x,y = np.shape(xch4)
         # find data in the defined region 
@@ -137,6 +159,8 @@ def Load_CH4(minlat, maxlat, minlon, maxlon, start_date, end_date, qa_pass = 0.5
         frame_lats = []
         frame_ch4 = [] 
         frame_qa = [] 
+        frame_wind = [] 
+        frame_pressure = [] 
         i = 0 
         while i < x: 
             j= 0
@@ -149,11 +173,15 @@ def Load_CH4(minlat, maxlat, minlon, maxlon, start_date, end_date, qa_pass = 0.5
                     frame_lats.append(la)
                     frame_ch4.append(xch4[i,j])
                     frame_qa.append(qa_value[i,j])
+                    frame_wind.append(ws[i,j])
+                    frame_pressure.append(surface_pressure[i,j])
                 j += 1 
             i += 1
             
-        zoom_xch4 = np.zeros(shape = (a,b))  
-        for val in zip(frame_lats,frame_lons,frame_ch4,frame_qa):
+        zoom_xch4 = np.zeros(shape = (a,b)) 
+        zoom_wind = np.zeros(shape = (a,b)) 
+        zoom_pressure = np.zeros(shape = (a,b)) 
+        for val in zip(frame_lats,frame_lons,frame_ch4,frame_qa, frame_wind, frame_pressure):
             if val[3] >=qa_pass:
                 lo = val[1]
                 la = val[0]
@@ -162,33 +190,46 @@ def Load_CH4(minlat, maxlat, minlon, maxlon, start_date, end_date, qa_pass = 0.5
 
                 if zoom_xch4[xi,yi] > 0: 
                     zoom_xch4[xi,yi] =  (zoom_xch4[xi,yi] + val[2])/2 
+                    zoom_wind[xi,yi] =  (zoom_wind[xi,yi] + val[4])/2 
+                    zoom_pressure[xi,yi] =  (zoom_pressure[xi,yi] + val[5])/2 
                 else:
                     zoom_xch4[xi,yi] = val[2]
+                    zoom_wind[xi,yi] = val[4]
+                    zoom_pressure[xi,yi] = val[5]
         zoom_xch4[zoom_xch4 == 0] = np.nan
         all_ch4.append(zoom_xch4)
+        all_wind.append(zoom_wind)
+        all_pressure.append(zoom_pressure)
         
     all_ch4 = np.array(all_ch4)
+    all_wind = np.array(all_wind)
+    all_pressure = np.array(all_pressure)
     fch4 = np.nanmean(all_ch4,axis=0)
+    fwind = np.nanmean(all_wind,axis=0)
+    fpressure = np.nanmean(all_pressure,axis=0)
     
-    return grid_lon,grid_lat,fch4
+    return grid_lon,grid_lat,fch4,fwind,fpressure
 
 
-def screening_plumes(ch4_obs,grid_lons,grid_lats,threshold_delta,min_pixelcount):
+def screening_plumes(ch4_obs,wind,pressure,grid_lons,grid_lats,threshold_delta,min_pixelcount):
     num_detected_plume = 0 
     detected_plumes = [] 
     detected_plumes_lons = []
     detected_plumes_lats = []
     patch_checks = [] 
     mean_delta_checks = []
+    detected_plume_wind = []
+    detected_plume_pressure = [] 
+    
     x,y = np.shape(ch4_obs)
     i = 5 
-    while i< x-6: 
+    while i<x-6: 
         j = 5
-        while j< y-6:
+        while j<y-6:
             patch = ch4_obs[i-5:i+6,j-5:j+6]
             mean_patch = np.nanmean(patch)
             median_patch = np.nanmedian(patch)
-            std_patch = np.nanstd(patch,ddof=1)
+            std_patch = np.nanstd(patch,ddof=0)
             c = (mean_patch - median_patch)/std_patch
             if c > 0.3: 
                 bgd_patch = median_patch 
@@ -208,23 +249,31 @@ def screening_plumes(ch4_obs,grid_lons,grid_lats,threshold_delta,min_pixelcount)
                 patch_checks.append(ano_patch)
                 mean_delta_checks.append(mean_delta)
                 detected_plumes.append(delta_patch)
+                detected_plume_wind.append(wind[i-5:i+6,j-5:j+6])
+                detected_plume_pressure.append(pressure[i-5:i+6,j-5:j+6])    
                 detected_plumes_lons.append(grid_lons[i-5:i+6,j-5:j+6])
                 detected_plumes_lats.append(grid_lats[i-5:i+6,j-5:j+6])
                 num_detected_plume += 1 
             j += 1 
         i += 1 
         
-    return detected_plumes, detected_plumes_lons, detected_plumes_lats 
+    return detected_plumes, detected_plume_wind, detected_plume_pressure, detected_plumes_lons, detected_plumes_lats 
 
-def create_figures(grid_lon,grid_lat,fch4,detected_plumes, detected_plumes_lons,detected_plumes_lats, date1, date2):
+def generate_results(grid_lon,grid_lat,fch4,detected_plumes, detected_plume_wind,
+                     detected_plume_pressure , detected_plumes_lons,detected_plumes_lats, date_str):
     Polygon_list = [] 
     max_enhance = [] 
     max_lons = [] 
     max_lats = []
-    for plume_coor in zip(detected_plumes_lons,detected_plumes_lats,detected_plumes):
+    max_winds = [] 
+    max_pressures = [] 
+    for plume_coor in zip(detected_plumes_lons,detected_plumes_lats,detected_plumes, detected_plume_wind, detected_plume_pressure):
         plume_lons = plume_coor[0]
         plume_lats = plume_coor[1]
-
+        
+        plume_wind = plume_coor[3]
+        plume_pressure = plume_coor[4]
+        
         ulon = np.max(plume_lons)
         llon = np.min(plume_lons)
         ulat = np.max(plume_lats)
@@ -234,22 +283,29 @@ def create_figures(grid_lon,grid_lat,fch4,detected_plumes, detected_plumes_lons,
             (ulon, ulat),
             (ulon, llat),
             (llon,llat)))
-
+    
         # find hotspot info 
         plume = plume_coor[2]
         (i,j) = nanargmax(plume)
         max_e = plume[i,j]
-        max_lon = plume_lons [i,j]
+        max_lon = plume_lons[i,j]
         max_lat = plume_lats[i,j]
+        max_wind =  plume_wind[i,j]
+        max_pressure = plume_pressure[i,j]
         
         if max_lon not in max_lons and max_lat not in max_lats: 
             max_enhance.append(max_e)
             max_lons.append(max_lon)
             max_lats.append(max_lat)
+            max_winds.append(max_wind) 
+            max_pressures.append(max_pressure)
             Polygon_list.append(pgon)
 
+    
+    # Quantification 
+    Q = quantification_mass_balance(max_enhance,max_winds,max_pressures,max_lons,max_lats)
+    
 
-        
     fig, ax = plt.subplots(1, 1, figsize=(5,5),
                        subplot_kw={'projection': ccrs.PlateCarree()})
 
@@ -260,7 +316,7 @@ def create_figures(grid_lon,grid_lat,fch4,detected_plumes, detected_plumes_lons,
     ax.set_xlim(np.min(grid_lon) -0.5, np.max(grid_lon)+0.5)
     ax.set_ylim(np.min(grid_lat) -0.5, np.max(grid_lat)+0.5)
     ax.stock_img()
-    ax.set_title(f"Valid TROPOMI Methane Observations from {date1} to {date2}",fontsize = 8.5 )
+    ax.set_title(f"Valid TROPOMI Methane Observations on {date_str}",fontsize = 8.5 )
     cbar = plt.colorbar(tro, pad=0.02, orientation= "horizontal")
     cbar.set_label('Column average methane mixing ratio (ppb)',fontsize=8.5)
     for pgon in Polygon_list:
@@ -272,7 +328,7 @@ def create_figures(grid_lon,grid_lat,fch4,detected_plumes, detected_plumes_lons,
     maxlat = np.round(np.max(grid_lat)) 
     minlat = np.round(np.min(grid_lat)) 
     
-    figure_name =  fr"assets/TROPOMI_data_{date1}_{date2}_{maxlon}_{minlon}_{maxlat}_{minlat}.jpg"
+    figure_name =  fr"assets/TROPOMI_data_{date_str}_{maxlon}_{minlon}_{maxlat}_{minlat}.jpg"
     plt.savefig(figure_name,dpi=300)
     figure_path =  figure_name
 
@@ -280,9 +336,10 @@ def create_figures(grid_lon,grid_lat,fch4,detected_plumes, detected_plumes_lons,
     # Create results table 
     IDs = range(len(max_enhance))
     df = pd.DataFrame(data = {"Plume ID":IDs,
-                                "Maximum Enhancement":max_enhance,
+                                "Maximum Enhancement (ppb)":max_enhance,
                                 "longitude":max_lons,
-                                "latitude":max_lats})
-    df.to_csv(fr"assets/plumes_{date1}_{date2}_{maxlon}_{minlon}_{maxlat}_{minlat}.csv",sep=',')
+                                "latitude":max_lats,
+                                "Emission rate (kg/hr)":Q})
+    df.to_csv(fr"assets/plumes_{date_str}_{maxlon}_{minlon}_{maxlat}_{minlat}.csv",sep=',')
 
     return figure_path
