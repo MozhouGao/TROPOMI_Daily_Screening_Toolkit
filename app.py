@@ -58,8 +58,6 @@ app.layout = html.Div([
         ),
         html.Div([html.Br()]),
         html.Button("Start Screening", id="screening-val", n_clicks=0),
-        html.Div([html.Br()]),
-        html.Div([html.Img(id='plot1')]),
     ], style={"width": "25%", "display": "inline-block", "verticalAlign": "top", "padding": "10px"}),
     
     html.Div([
