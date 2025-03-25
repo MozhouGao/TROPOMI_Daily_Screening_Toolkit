@@ -41,8 +41,8 @@ def download_TROPOMI_CH4_L2_data(start_date,end_date):
     bucket = s3.Bucket("eodata")
 
     prefixes = []
-    start_date = datetime.strptime(start_date, "%Y%m%d")
-    end_date = datetime.strptime(end_date, "%Y%m%d")
+    start_date = datetime.strptime(start_date, "%Y-%m-%d")
+    end_date = datetime.strptime(end_date, "%Y-%m-%d")
     for i in range((end_date - start_date).days + 1):  # Include both start and end dates
         download_date = start_date + timedelta(days=i)
         download_date = download_date.strftime("%Y/%m/%d/")
@@ -420,7 +420,6 @@ def generate_results(grid_lon,grid_lat,fch4,detected_plumes, detected_plume_wind
     
     figure_name =  fr"assets/TROPOMI_data_{date_str}_{maxlon}_{minlon}_{maxlat}_{minlat}.jpg"
     plt.savefig(figure_name,dpi=300)
-    figure_path =  figure_name
 
 
     # Create results table 
@@ -432,7 +431,7 @@ def generate_results(grid_lon,grid_lat,fch4,detected_plumes, detected_plume_wind
                                 "Emission rate (kg/hr)":Q})
     df.to_csv(fr"assets/plumes_{date_str}_{maxlon}_{minlon}_{maxlat}_{minlat}.csv",sep=',',index= False)
 
-    return figure_path
+    return figure_name
 
 def find_indices (target_lon,target_lat,X,Y):
     '''
