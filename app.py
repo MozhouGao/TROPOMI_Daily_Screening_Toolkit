@@ -221,6 +221,6 @@ def run_analysis(start_date, end_date, geojson, thda, min_pix,n_clicks):
                                 return r"assets/pic.JPG"
 
 if __name__ == "__main__":
-    app.run_server(debug=True)
+    app.run(debug=True)
 
 
