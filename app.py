@@ -39,7 +39,7 @@ app.layout = html.Div([
         html.Button("Download", id="download_button", n_clicks=0),
         html.Div(id = 'download-log'),
 
-        html.H5(children = "4. start Screening",
+        html.H5(children = "4. Screening",
                style = {'textAlign': 'left','color': '#415F4A'}),
         html.Div(
             [dcc.Input(id='thda', type='number', placeholder='Threshold delta (default = 15)',
@@ -70,13 +70,9 @@ app.layout = html.Div([
                 draw={"polygon": False, "polyline": False, "rectangle": True, "circle": False, "marker": False},
                 edit={"remove": True}
             )], id="feature_group")
-        ], id="map", style={"width": "80%", "height": "350px"}, center = [51.0447, -114.0719], zoom = 5),
+        ], id="map", style={"width": "95%", "height": "500px"}, center = [51.0447, -114.0719], zoom = 5),
         html.Div(id="polygon_data", style={"whiteSpace": "pre-wrap"}),
-        html.Div([
-                html.H5("5. Screening Result",
-                       style = {'textAlign': 'left','color': '#415F4A'}),
-                html.Img(id='plot1')
-                ]),
+        html.Div(id = 'plot-log'),
     ], style={"width": "70%", "display": "inline-block", "padding": "10px"}),
     
 
@@ -147,7 +143,7 @@ def download_data(start_date,end_date,n_clicks):
     return download_prefix
 
 @app.callback(
-    Output("plot1","src"),
+    Output("plot-log","children"),
     Input('date_picker','start_date'),
     Input('date_picker','end_date'),
     Input("edit_control", "geojson"),
@@ -159,13 +155,13 @@ def download_data(start_date,end_date,n_clicks):
 def run_analysis(start_date, end_date, geojson, thda, min_pix,n_clicks):
     if n_clicks > 0:
         if start_date is None and end_date is None: 
-            return r"assets/pic_warning_date_range.JPG"
+            return r"Please select date range"
         else: 
             if geojson is None: 
-                return r"assets/pic_warning_define_region.JPG"
+                return r"Please define the region"
             else: 
                 if thda is None or min_pix is None: 
-                    return r"assets/pic_thresholds.JPG"
+                    return r"Please input the threshold"
                 else:
                     start_date_object = date.fromisoformat(start_date)
                     start_date_string = start_date_object.strftime('%Y-%m-%d')
@@ -214,11 +210,11 @@ def run_analysis(start_date, end_date, geojson, thda, min_pix,n_clicks):
                                     path_list.append(figure_path)
                                     
                             if len(path_list)>0:
-                                return path_list[-1]
+                                return rf"You can find the result:{path_list[-1]}"
                             else: 
-                                return r"assets/pic.JPG"
+                                return r"No ultra-emitter event detected in your region"
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=False)
 
 

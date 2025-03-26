@@ -57,7 +57,10 @@ def download_TROPOMI_CH4_L2_data(start_date,end_date):
         raise FileNotFoundError(f"Could not find any files for between {start_date} and {end_date}")
     else:
         path = os.getcwd()
-        target = os.path.abspath(f"{path}/TROPOMI_data")
+        target = os.path.abspath(os.path.join(path, "TROPOMI_data"))
+        if not os.path.exists(target):
+            os.makedirs(target)
+
         files = [f for f in listdir(target) if isfile(join(target, f))]
 
     count_download = 0 
@@ -432,6 +435,17 @@ def generate_results(grid_lon,grid_lat,fch4,detected_plumes, detected_plume_wind
     df.to_csv(fr"assets/plumes_{date_str}_{maxlon}_{minlon}_{maxlat}_{minlat}.csv",sep=',',index= False)
 
     return figure_name
+
+
+def create_matplotlib_figure():
+    fig, ax = plt.subplots()
+    ax.plot([0, 1, 2, 3], [0, 1, 4, 9])
+
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png")
+    buf.seek(0)
+    encoded_image = base64.b64encode(buf.read()).decode("utf-8")
+    return f"data:image/png;base64,{encoded_image}"
 
 def find_indices (target_lon,target_lat,X,Y):
     '''
