@@ -3,69 +3,80 @@ import netCDF4 as nc
 import numpy as np 
 import matplotlib.pyplot as plt 
 from matplotlib.path import Path
-from sentinelsat import SentinelAPI
+import boto3
+from os import listdir
+from os.path import isfile, join
 import pandas as pd 
 import cartopy.crs as ccrs
 import cartopy.feature as cf
 from shapely.geometry.polygon import Polygon
 from math import sqrt
+from datetime import datetime, timedelta
 
-def download_TROPOMI_CH4_L2_data(start_date,end_date,west_lon, east_lon, south_lat, north_lat): 
-    
-    #create a folder to save data 
+def read_aws_keys():
     path = os.getcwd()
-    local_path = os.path.abspath(f"{path}/TROPOMI_data")
-    if not os.path.exists(local_path):
-        #print("create folder to save downloaded data")
-        os.mkdir(local_path)
+    aws_keys_file = os.path.abspath(f"{path}/AWS_Keys.txt")
+    AWS_keys = open(aws_keys_file, "r")
+    access_key = ''
+    secret_key = ''
+    for line in AWS_keys:
+        if "access_key_id" in line: 
+            access_key = line.split(":")[-1].strip()
+        if "secret_access_key" in line: 
+            secret_key = line.split(":")[-1].strip()
+    return access_key, secret_key
 
-    # Query S5P Data Hub using guest login credentials
-    api = SentinelAPI('s5pguest', 's5pguest', 'https://s5phub.copernicus.eu/dhus')
 
-    # define date 
-    query_date=(start_date,end_date)
+def download_TROPOMI_CH4_L2_data(start_date,end_date):
+    access_key,secret_key = read_aws_keys()
+    session = boto3.session.Session()
+    s3 = boto3.resource(
+        's3',
+        endpoint_url='https://eodata.dataspace.copernicus.eu',
+        aws_access_key_id=access_key,
+        aws_secret_access_key=secret_key,
+        region_name='default'
+    ) 
 
-    # define polygon 
-    west_lon = str(west_lon)
-    east_lon = str(east_lon)
-    south_lat = str(south_lat)
-    north_lat = str(north_lat)
-    footprint = 'POLYGON((' + west_lon + ' ' + south_lat + ',' + east_lon + ' ' + south_lat + ',' + east_lon + ' ' + north_lat + ',' + west_lon + ' ' + north_lat + ',' + west_lon + ' ' + south_lat + '))'
+    bucket = s3.Bucket("eodata")
 
-    # query data product
-    try:
-        products = api.query(footprint,date=query_date,platformname="Sentinel-5 Precursor",producttype="L2__CH4___")
-        if bool(len(products)>0): 
-            # Before downloading, check if the file already exist in the local drive.
-            downloaded_keys = [] 
-            for key in products.keys():  
-                file_title = products[key]['title']
-                file_path = os.path.abspath(f"{local_path}/{file_title}.nc")
-                #print(file_path)
-                if os.path.exists(file_path):
-                    downloaded_keys.append(key)
-            for key in downloaded_keys:
-                products.pop(key)
-        else: 
-            return f"Data files not available between {start_date} and {end_date}"
-        if bool(len(products)>0):
-            products_df = api.to_dataframe(products)
-            # log data 
-            file_name_list = []
-            download_prefix = ""
-            for ele in zip(products_df['title'],products_df['size']):
-                download_prefix = download_prefix + f" Data files downloading: {ele[0]}; size: {ele[1]}"
-                file_name_list.append(ele[0])
-            # download all results from the search
-            try:
-                api.download_all(products,local_path)
-                return download_prefix
-            except: 
-                return "Too many requests, trying to download again"
-        else: 
-            return "All data files are already exist in the local drive"
-    except:
-        return "Error connecting to SciHub server"
+    prefixes = []
+    start_date = datetime.strptime(start_date, "%Y-%m-%d")
+    end_date = datetime.strptime(end_date, "%Y-%m-%d")
+    for i in range((end_date - start_date).days + 1):  # Include both start and end dates
+        download_date = start_date + timedelta(days=i)
+        download_date = download_date.strftime("%Y/%m/%d/")
+        prefix = f"Sentinel-5P/TROPOMI/L2__CH4___/{download_date}" 
+        prefixes.append(prefix)
+
+    objects = [] 
+    for prefix in prefixes: 
+        objects += bucket.objects.filter(Prefix=prefix)
+    
+    if not list(objects):
+        raise FileNotFoundError(f"Could not find any files for between {start_date} and {end_date}")
+    else:
+        path = os.getcwd()
+        target = os.path.abspath(os.path.join(path, "TROPOMI_data"))
+        if not os.path.exists(target):
+            os.makedirs(target)
+
+        files = [f for f in listdir(target) if isfile(join(target, f))]
+
+    count_download = 0 
+    for obj in objects:
+        L2_file_name = obj.key.split('/')[-1]
+        if L2_file_name not in files: 
+            os.makedirs(os.path.dirname(obj.key), exist_ok=True)
+            if not os.path.isdir(obj.key):
+                bucket.download_file(obj.key, fr"{target}\{L2_file_name}")
+                count_download += 1
+    if count_download == 0: 
+        download_message = "all files are already downloaded"
+    else: 
+        download_message = f"{count_download} files are downloaded"
+    return download_message
+
 
 def inpolygon(xq, yq, xv, yv):
     vertices = np.vstack((xv, yv)).T
@@ -118,97 +129,176 @@ def quantification_mass_balance(enhancements,winds,pressures,lons,lats):
     
     return Q 
 
-def Load_CH4(minlat, maxlat, minlon, maxlon, date, qa_pass = 0.5): 
-    lons = np.arange(minlon, maxlon + 0.05, 0.05)
-    lats = np.arange(minlat, maxlat + 0.05, 0.05)
-    grid_lon,grid_lat = np.meshgrid(lons, lats)
-    a,b= np.shape(grid_lat)
-    p = Path([(minlat,minlon), (minlat, maxlon),
-               (maxlat, maxlon), (maxlat, minlon)]) 
-    # find file path 
-    local_path = os.path.abspath(f"{os.getcwd()}/TROPOMI_data")
-    
-    file_list = find_nc_filenames(local_path, date)
-    all_wind = [] 
-    all_pressure = [] 
-    all_ch4 = [] 
-    for file_name in file_list: 
-        # for each file, read data 
-        file_path = os.path.abspath(f"{local_path}/{file_name}")
-        data = nc.Dataset(file_path)
-        xch4 = data.groups['PRODUCT']['methane_mixing_ratio_bias_corrected'][:].data[0,:,:]
-        xch4[xch4 == 9.96921e+36] = np.nan
-        latitudes = data.groups['PRODUCT']['latitude'][:].data[0,:,:]
-        longitudes = data.groups['PRODUCT']['longitude'][:].data[0,:,:]
-        qa_value = data.groups['PRODUCT']['qa_value'][:].data[0,:,:]
-        u = data.groups['PRODUCT'].groups["SUPPORT_DATA"]["INPUT_DATA"]["eastward_wind"][0,:,:]
-        v = data.groups['PRODUCT'].groups["SUPPORT_DATA"]["INPUT_DATA"]["northward_wind"][0,:,:]
-        surface_pressure = data.groups['PRODUCT'].groups["SUPPORT_DATA"]["INPUT_DATA"]["surface_pressure"][0,:,:]
-        data.close()
-        
-        # caluclate wind speed 
-        ws = (u**2 + v**2)**0.5 
-        
-        # surface pressure  
-        surface_pressure = surface_pressure / 100 
-        
-        # find dims of xch4 
-        x,y = np.shape(xch4)
-        # find data in the defined region 
-        frame_lons = [] 
-        frame_lats = []
-        frame_ch4 = [] 
-        frame_qa = [] 
-        frame_wind = [] 
-        frame_pressure = [] 
-        i = 0 
-        while i < x: 
-            j= 0
-            while j < y:
-                lo = longitudes[i,j]
-                la = latitudes[i,j] 
-                check1 = p.contains_points([(la, lo)])
-                if check1[0]: 
-                    frame_lons.append(lo)
-                    frame_lats.append(la)
-                    frame_ch4.append(xch4[i,j])
-                    frame_qa.append(qa_value[i,j])
-                    frame_wind.append(ws[i,j])
-                    frame_pressure.append(surface_pressure[i,j])
-                j += 1 
-            i += 1
-            
-        zoom_xch4 = np.zeros(shape = (a,b)) 
-        zoom_wind = np.zeros(shape = (a,b)) 
-        zoom_pressure = np.zeros(shape = (a,b)) 
-        for val in zip(frame_lats,frame_lons,frame_ch4,frame_qa, frame_wind, frame_pressure):
-            if val[3] >=qa_pass:
-                lo = val[1]
-                la = val[0]
-                yi = find_nearest(grid_lon,lo)[1]
-                xi = find_nearest(grid_lat,la)[0]
+def Load_CH4(minlat, maxlat, minlon, maxlon, date, qa_pass = 0.5):
 
-                if zoom_xch4[xi,yi] > 0: 
-                    zoom_xch4[xi,yi] =  (zoom_xch4[xi,yi] + val[2])/2 
-                    zoom_wind[xi,yi] =  (zoom_wind[xi,yi] + val[4])/2 
-                    zoom_pressure[xi,yi] =  (zoom_pressure[xi,yi] + val[5])/2 
-                else:
-                    zoom_xch4[xi,yi] = val[2]
-                    zoom_wind[xi,yi] = val[4]
-                    zoom_pressure[xi,yi] = val[5]
-        zoom_xch4[zoom_xch4 == 0] = np.nan
-        all_ch4.append(zoom_xch4)
-        all_wind.append(zoom_wind)
-        all_pressure.append(zoom_pressure)
-        
-    all_ch4 = np.array(all_ch4)
-    all_wind = np.array(all_wind)
-    all_pressure = np.array(all_pressure)
-    fch4 = np.nanmean(all_ch4,axis=0)
-    fwind = np.nanmean(all_wind,axis=0)
-    fpressure = np.nanmean(all_pressure,axis=0)
+    date_str = date.strftime("%Y%m%d")
+    daily_folder = "Daily_Global_TROPOMI_Concentration_Maps"
+    if not os.path.exists(daily_folder):  # Check if the folder exists
+        os.makedirs(daily_folder)  # Create the folder
     
-    return grid_lon,grid_lat,fch4,fwind,fpressure
+    daily_file_name = f"{date_str}.nc"
+    daily_file_path = os.path.join(daily_folder, daily_file_name)
+    if os.path.exists(daily_file_path):
+        merge_file = False
+    else:
+        merge_file = True 
+
+    if merge_file:
+        # define a global 0.05 x 0.05 degree grid cells
+        grid_longitudes = np.arange(-180,180,0.05)
+        grid_latitudes = np.arange(-90,90,0.05)
+        X,Y = np.meshgrid(grid_longitudes,grid_latitudes)
+        fliped_Y =  np.flipud(Y)
+        global_ch4 = np.empty(X.shape)
+        global_winds = np.empty(X.shape)
+        global_qa = np.empty(X.shape)
+        global_pressures = np.empty(X.shape)
+        # lons = np.arange(minlon, maxlon + 0.05, 0.05)
+        # lats = np.arange(minlat, maxlat + 0.05, 0.05)
+        # grid_lon,grid_lat = np.meshgrid(lons, lats)
+        # a,b= np.shape(grid_lat)
+        # p = Path([(minlat,minlon), (minlat, maxlon),
+        #            (maxlat, maxlon), (maxlat, minlon)]) 
+        # find file path 
+        data_path = os.path.abspath(f"{os.getcwd()}/TROPOMI_data")
+        
+        # file_list = find_nc_filenames(local_path, date)
+        file_list = []
+        for f in listdir(data_path):
+            if isfile(join(data_path, f)) and date_str in f.split('__')[-1].split('_')[1]:
+                file_list.append(rf"{os.getcwd()}/TROPOMI_data/{f}")
+        
+        all_ch4 = [] 
+        all_qa = [] 
+        all_winds = [] 
+        all_pressures = [] 
+        all_lats = []
+        all_lons = [] 
+        for file in file_list: 
+            # for each file, read data 
+            data = nc.Dataset(file)
+            xch4 = data.groups['PRODUCT']['methane_mixing_ratio_bias_corrected'][:].data[0,:,:]
+            # create mask for CH4 concentration 
+            mask = 9.96921e+36
+            valid_mask = xch4 != mask
+            masked_xch4 = xch4[valid_mask]
+            all_ch4 += list(masked_xch4)
+            # create mask for lat and long
+            latitudes = data.groups['PRODUCT']['latitude'][:].data[0,:,:]
+            longitudes = data.groups['PRODUCT']['longitude'][:].data[0,:,:]
+            masked_latitudes = latitudes[valid_mask]
+            all_lats += list(masked_latitudes)
+            masked_longitudes = longitudes[valid_mask]
+            all_lons += list(masked_longitudes)
+            # create mask for QA value
+            qa_value = data.groups['PRODUCT']['qa_value'][:].data[0,:,:]
+            masked_qa = qa_value[valid_mask]
+            all_qa += list(masked_qa)
+            # create mask for wind speed 
+            u = data.groups['PRODUCT'].groups["SUPPORT_DATA"]["INPUT_DATA"]["eastward_wind"][0,:,:]
+            masked_u = u[valid_mask]
+            v = data.groups['PRODUCT'].groups["SUPPORT_DATA"]["INPUT_DATA"]["northward_wind"][0,:,:]
+            masked_v = v[valid_mask]
+            # create mask for pressure 
+            surface_pressure = data.groups['PRODUCT'].groups["SUPPORT_DATA"]["INPUT_DATA"]["surface_pressure"][0,:,:]
+            masked_sp = surface_pressure[valid_mask] 
+            data.close()
+            
+            # caluclate wind speed 
+            ws = (masked_u**2 + masked_v**2)**0.5 
+            all_winds += list(ws)
+            # surface pressure  
+            surface_pressure = masked_sp / 100 
+            all_pressures += list(surface_pressure)
+        
+        # create dataframe for storing global valid CH4 concentration  
+        valid_lat = np.round(all_lats,decimals=2)
+        valid_lon = np.round(all_lons,decimals=2)
+        valid_lat  = valid_lat.astype(str)
+        valid_lon = valid_lon.astype(str)
+        xdf = pd.DataFrame(data={'xch4':all_ch4,
+                                 'qa_value':all_qa,
+                                 'wind_speed': all_winds,
+                                 'pressure': all_pressures,
+                                 'lon':valid_lon,
+                                 'lat':valid_lat  })
+        xdf = xdf[xdf.qa_value >= qa_pass]
+        grouped_xdf = xdf.groupby(['lon', 'lat'], as_index=False).mean()
+    
+        # create the array for storing global valid CH4 concentration 
+        for _,row in xdf.iterrows(): 
+            la = float(row.lat)
+            lat_idx = np.argmin(np.abs(grid_latitudes - la))
+            lo = float(row.lon)
+            lon_idx = np.argmin(np.abs(grid_longitudes - lo))  
+            global_ch4[lat_idx,lon_idx] = row.xch4
+            global_winds[lat_idx,lon_idx] = row.wind_speed
+            global_qa[lat_idx,lon_idx] = row.qa_value
+            global_pressures[lat_idx,lon_idx] = row.pressure
+    
+        flipped_ch4 = np.flipud(global_ch4) 
+        flipped_qa = np.flipud(global_qa)
+        flipped_winds = np.flipud(global_winds)
+        flipped_pressures = np.flipud(global_pressures)
+
+        #save the daily TROPOMI concentrations 
+        # Create a new NetCDF file
+        with nc.Dataset(daily_file_path, "w", format="NETCDF4") as ncfile:
+            # Get dimensions
+            lat_size, lon_size = flipped_ch4.shape  # Assuming same shape for all arrays
+        
+            # Define dimensions
+            ncfile.createDimension("lat", lat_size)
+            ncfile.createDimension("lon", lon_size)
+        
+            # Create coordinate variables
+            latitudes = ncfile.createVariable("latitude", "f4", ("lat", "lon"))
+            longitudes = ncfile.createVariable("longitude", "f4", ("lat", "lon"))
+        
+            # Create data variables
+            ch4 = ncfile.createVariable("CH4", "f4", ("lat", "lon"))
+            wind = ncfile.createVariable("Wind", "f4", ("lat", "lon"))
+            pressure = ncfile.createVariable("Pressure", "f4", ("lat", "lon"))
+            qa_valie = ncfile.createVariable("QA_value","f4", ("lat","lon"))
+        
+            # Assign data to variables
+            latitudes[:, :] = fliped_Y
+            longitudes[:, :] = X
+            ch4[:, :] = flipped_ch4
+            wind[:, :] = flipped_winds
+            pressure[:, :] =flipped_pressures
+        
+            # Add metadata 
+            # ncfile.description = "Extracted dataset with CH4, wind, and pressure values."
+            # latitudes.units = "degrees_north"
+            # longitudes.units = "degrees_east"
+            # ch4.units = "ppm"
+            # wind.units = "m/s"
+            # pressure.units = "hPa"
+
+    else:
+        daily_data = nc.Dataset(daily_file_path)
+        flipped_ch4 = daily_data.variables["CH4"][:].data
+        #flipped_qa = np.flipud(global_qa)
+        flipped_winds = daily_data.variables["Wind"][:].data
+        flipped_pressures = daily_data.variables["Pressure"][:].data
+        X = daily_data.variables["longitude"][:].data
+        fliped_Y = daily_data.variables["latitude"][:].data
+        daily_data.close()
+
+    # find indices of defined region
+    upper_left_x,upper_left_y = find_indices(minlon,maxlat,X,fliped_Y)
+    lower_right_x,lower_right_y = find_indices(maxlon,minlat,X,fliped_Y)
+
+    fch4 = flipped_ch4[upper_left_x:lower_right_x,upper_left_y:lower_right_y]
+    #midland_qa = flipped_qa[upper_left_x:lower_right_x,upper_left_y:lower_right_y]
+    fwind = flipped_winds[upper_left_x:lower_right_x,upper_left_y:lower_right_y]
+    fpressure = flipped_pressures[upper_left_x:lower_right_x,upper_left_y:lower_right_y]
+    grid_lons = X[upper_left_x:lower_right_x,upper_left_y:lower_right_y]
+    grid_lats = fliped_Y[upper_left_x:lower_right_x,upper_left_y:lower_right_y]
+
+    fch4[fch4 == 0] = np.nan
+    return grid_lons,grid_lats,fch4,fwind,fpressure
 
 
 def screening_plumes(ch4_obs,wind,pressure,grid_lons,grid_lats,threshold_delta,min_pixelcount):
@@ -227,33 +317,36 @@ def screening_plumes(ch4_obs,wind,pressure,grid_lons,grid_lats,threshold_delta,m
         j = 5
         while j<y-6:
             patch = ch4_obs[i-5:i+6,j-5:j+6]
-            mean_patch = np.nanmean(patch)
-            median_patch = np.nanmedian(patch)
-            std_patch = np.nanstd(patch,ddof=0)
-            c = (mean_patch - median_patch)/std_patch
-            if c > 0.3: 
-                bgd_patch = median_patch 
-            else: 
-                bgd_patch = (2.5*median_patch) - (1.5*mean_patch) 
-            # calculate the XCH4 anomaly in the patch
-            ano_patch = patch - bgd_patch - (3 * std_patch) 
-            # calculate the XCH4 enhancement in the patch
-            delta_patch = patch - bgd_patch
-            # define a suspect plume
-            ind_patch  = np.any(ano_patch>0)
-            mean_delta = np.nanmean(delta_patch[delta_patch>0])
-            count_pixel = len(delta_patch[delta_patch>0])
-
-            # Record the patches (XCH4, longitude, latitude) if all requirements fulfilled.
-            if ind_patch and mean_delta>threshold_delta and count_pixel > min_pixelcount: 
-                patch_checks.append(ano_patch)
-                mean_delta_checks.append(mean_delta)
-                detected_plumes.append(delta_patch)
-                detected_plume_wind.append(wind[i-5:i+6,j-5:j+6])
-                detected_plume_pressure.append(pressure[i-5:i+6,j-5:j+6])    
-                detected_plumes_lons.append(grid_lons[i-5:i+6,j-5:j+6])
-                detected_plumes_lats.append(grid_lats[i-5:i+6,j-5:j+6])
-                num_detected_plume += 1 
+            if np.nansum(patch) > 0: 
+                mean_patch = np.nanmean(patch)
+                median_patch = np.nanmedian(patch)
+                std_patch = np.nanstd(patch,ddof=0)
+                c = (mean_patch - median_patch)/std_patch
+                if std_patch > 0:
+                    if c > 0.3: 
+                        bgd_patch = median_patch 
+                    else: 
+                        bgd_patch = (2.5*median_patch) - (1.5*mean_patch) 
+                    # calculate the XCH4 anomaly in the patch
+                    ano_patch = patch - bgd_patch - (3 * std_patch) 
+                    # calculate the XCH4 enhancement in the patch
+                    delta_patch = patch - bgd_patch
+                    # define a suspect plume
+                    ind_patch  = np.any(ano_patch>0)
+                    if ind_patch:
+                        mean_delta = np.nanmean(delta_patch[delta_patch>0])
+                    count_pixel = len(delta_patch[delta_patch>0])
+            
+                    # Record the patches (XCH4, longitude, latitude) if all requirements fulfilled.
+                    if ind_patch and mean_delta>threshold_delta and count_pixel > min_pixelcount: 
+                        patch_checks.append(ano_patch)
+                        mean_delta_checks.append(mean_delta)
+                        detected_plumes.append(delta_patch)
+                        detected_plume_wind.append(wind[i-5:i+6,j-5:j+6])
+                        detected_plume_pressure.append(pressure[i-5:i+6,j-5:j+6])    
+                        detected_plumes_lons.append(grid_lons[i-5:i+6,j-5:j+6])
+                        detected_plumes_lats.append(grid_lats[i-5:i+6,j-5:j+6])
+                        num_detected_plume += 1 
             j += 1 
         i += 1 
         
@@ -306,6 +399,11 @@ def generate_results(grid_lon,grid_lat,fch4,detected_plumes, detected_plume_wind
     Q = quantification_mass_balance(max_enhance,max_winds,max_pressures,max_lons,max_lats)
     
 
+    path = os.getcwd()
+    target = os.path.abspath(os.path.join(path, "assets"))
+    if not os.path.exists(target):
+        os.makedirs(target)
+                         
     fig, ax = plt.subplots(1, 1, figsize=(5,5),
                        subplot_kw={'projection': ccrs.PlateCarree()})
 
@@ -330,7 +428,6 @@ def generate_results(grid_lon,grid_lat,fch4,detected_plumes, detected_plume_wind
     
     figure_name =  fr"assets/TROPOMI_data_{date_str}_{maxlon}_{minlon}_{maxlat}_{minlat}.jpg"
     plt.savefig(figure_name,dpi=300)
-    figure_path =  figure_name
 
 
     # Create results table 
@@ -340,6 +437,30 @@ def generate_results(grid_lon,grid_lat,fch4,detected_plumes, detected_plume_wind
                                 "longitude":max_lons,
                                 "latitude":max_lats,
                                 "Emission rate (kg/hr)":Q})
-    df.to_csv(fr"assets/plumes_{date_str}_{maxlon}_{minlon}_{maxlat}_{minlat}.csv",sep=',')
+    df.to_csv(fr"assets/plumes_{date_str}_{maxlon}_{minlon}_{maxlat}_{minlat}.csv",sep=',',index= False)
 
-    return figure_path
+    return figure_name
+
+
+def create_matplotlib_figure():
+    fig, ax = plt.subplots()
+    ax.plot([0, 1, 2, 3], [0, 1, 4, 9])
+
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png")
+    buf.seek(0)
+    encoded_image = base64.b64encode(buf.read()).decode("utf-8")
+    return f"data:image/png;base64,{encoded_image}"
+
+def find_indices (target_lon,target_lat,X,Y):
+    '''
+    target_lat: target latitude
+    target_lon: target longitude 
+    X: 2D longitude array (-180,180)   
+    Y: 2D latitude array (90,-90)
+    '''
+    lat_diff = np.abs(Y - target_lat)
+    lon_diff = np.abs(X - target_lon)
+    total_diff = lat_diff + lon_diff
+    ind_x, ind_y = np.unravel_index(np.argmin(total_diff), total_diff.shape)
+    return ind_x, ind_y 

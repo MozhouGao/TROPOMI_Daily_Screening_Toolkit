@@ -1,3 +1,14 @@
+# TROPOMI Daily Screening Toolkit - Version 1.1 
+### Release Notes
+#### Updates:
+##### 1.TROPOMI Data Download: Migrated from Sentinelsat to Boto3 for data retrieval: https://documentation.dataspace.copernicus.eu/APIs/S3.html#accessing-eodata-via-aws-cli
+-   To enable API access, follow the EODATA credential generation guide: https://eodata-s3keysmanager.dataspace.copernicus.eu/
+-   If you do not have an account, register here: https://documentation.dataspace.copernicus.eu/Registration.html
+-   Once credentials are generated, store your access and secret key in a file named AWS_Keys.txt under the workspace. Set up access credentials using the provided example.
+![image](https://github.com/user-attachments/assets/fa541963-3e3e-4271-bad1-c390e040d830)
+
+  ##### 2.Added map-based selection.
+
 # TROPOMI Daily Screening Toolkit - Version 1.0 
 ## Summary
 This toolkit is developed to automatically screen the suspect methane (CH4) plumes over a user defined region based on the public accessible satellite observations (i.e., methane dry air mixing ratio from TROPOMI). Users are required to input several parameters to complete the screening process, including: the screening date(s), region boundaries, screening criteria (i.e., threshold enhancement, number of valid plume pixels. The output of each screening run is a XCH4 concentration map by highlighting the regions with high probability of detecting suspect methane plume(s). A list of the potential source locations is also available from the screening result. The noteworthy point is that this toolkit is designed neither for pinpointing the emission source at the facility or component level, nor for screening of small methane leaks (generally <25 tons/hour). For source attributions of the detected suspect plumes, the follow-up targeted fine-scale observations over the regions with high probability of detecting suspect methane plume(s) are required.
