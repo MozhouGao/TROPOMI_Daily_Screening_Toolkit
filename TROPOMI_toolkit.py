@@ -399,6 +399,11 @@ def generate_results(grid_lon,grid_lat,fch4,detected_plumes, detected_plume_wind
     Q = quantification_mass_balance(max_enhance,max_winds,max_pressures,max_lons,max_lats)
     
 
+    path = os.getcwd()
+    target = os.path.abspath(os.path.join(path, "assets"))
+    if not os.path.exists(target):
+        os.makedirs(target)
+                         
     fig, ax = plt.subplots(1, 1, figsize=(5,5),
                        subplot_kw={'projection': ccrs.PlateCarree()})
 
