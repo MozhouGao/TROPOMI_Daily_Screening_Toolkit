@@ -2,12 +2,13 @@
 ### Release Notes
 #### Updates:
 
-1.TROPOMI Data Download: Migrated from Sentinelsat to Boto3 for data retrieval: https://documentation.dataspace.copernicus.eu/APIs/S3.html#accessing-eodata-via-aws-cli
-- To enable API access, follow the EODATA credential generation guide: https://eodata-s3keysmanager.dataspace.copernicus.eu/
-- If you do not have an account, register here: https://documentation.dataspace.copernicus.eu/Registration.html
-- Once credentials are generated, store your access and secret key in a file named AWS_Keys.txt under the workspace. Set up access credentials using the provided example.
+- 1.TROPOMI Data Download: Migrated from Sentinelsat to Boto3 for data retrieval: https://documentation.dataspace.copernicus.eu/APIs/S3.html#accessing-eodata-via-aws-cli
+-   To enable API access, follow the EODATA credential generation guide: https://eodata-s3keysmanager.dataspace.copernicus.eu/
+-   If you do not have an account, register here: https://documentation.dataspace.copernicus.eu/Registration.html
+-   Once credentials are generated, store your access and secret key in a file named AWS_Keys.txt under the workspace. Set up access credentials using the provided example.
 ![image](https://github.com/user-attachments/assets/fa541963-3e3e-4271-bad1-c390e040d830)
-2.Added map-based selection.
+
+- 2.Added map-based selection.
 
 # TROPOMI Daily Screening Toolkit - Version 1.0 
 ## Summary
