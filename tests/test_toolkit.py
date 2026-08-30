@@ -93,6 +93,17 @@ class ScreeningTests(unittest.TestCase):
         result = screening_plumes(empty, empty, empty, empty, empty, 15, 1)
         self.assertEqual(result[0], [])
 
+    def test_detects_synthetic_plume(self):
+        field = np.full((20, 20), 1800.0)
+        field[8:13, 8:13] = 1900.0
+        wind = np.ones_like(field)
+        pressure = np.full_like(field, 1000.0)
+        lons = np.linspace(-114, -113, 20)[None, :].repeat(20, axis=0)
+        lats = np.linspace(51, 52, 20)[:, None].repeat(20, axis=1)
+        detected, *_ = screening_plumes(field, wind, pressure, lons, lats, 15, 1)
+        self.assertGreater(len(detected), 0)
+        self.assertGreater(np.nanmax(detected[0]), 15)
+
     def test_hotspot_dedupe_uses_coordinate_pairs(self):
         plume = np.zeros((3, 3))
         plume[1, 1] = 40

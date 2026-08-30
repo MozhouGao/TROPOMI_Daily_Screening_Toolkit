@@ -69,16 +69,22 @@ app.layout = html.Div([
     ], style={"width": "25%", "display": "inline-block", "verticalAlign": "top", "padding": "10px"}),
     html.Div([
         html.H5("2. Select Region on Map", style={"textAlign": "left", "color": "#415F4A"}),
+        html.P(
+            "Use the rectangle button on the map toolbar (below the zoom controls) to draw the region.",
+            style={"marginBottom": "6px"},
+        ),
         dl.Map([
             dl.TileLayer(id="basemap", url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"),
             dl.FeatureGroup([
                 dl.EditControl(
                     id="edit_control",
+                    position="topleft",
                     draw={
                         "polygon": False,
                         "polyline": False,
                         "rectangle": True,
                         "circle": False,
+                        "circlemarker": False,
                         "marker": False,
                     },
                     edit={"remove": True},
