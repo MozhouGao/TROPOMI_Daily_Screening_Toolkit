@@ -1,3 +1,14 @@
+# TROPOMI Daily Screening Toolkit - Version 1.2
+### Release Notes
+#### Updates:
+- Screening now walks every selected day, including single-day and cross-month ranges.
+- Downloads write into `TROPOMI_data/` on macOS, Linux, and Windows.
+- Daily remaps initialize empty cells as NaN and average duplicate grid hits.
+- Download prefers OFFL CH4 files and falls back to NRTI when OFFL is not published yet.
+- Date, map, and threshold controls no longer re-trigger download or screening.
+- The map uses the rectangle bounding box (min/max lon/lat) instead of GeoJSON corner indices.
+- Screening maps are shown in the app. Thresholds default to 15 ppb and 1 pixel when left blank.
+
 # TROPOMI Daily Screening Toolkit - Version 1.1 
 ### Release Notes
 #### Updates:
@@ -13,15 +24,38 @@
 ## Summary
 This toolkit is developed to automatically screen the suspect methane (CH4) plumes over a user defined region based on the public accessible satellite observations (i.e., methane dry air mixing ratio from TROPOMI). Users are required to input several parameters to complete the screening process, including: the screening date(s), region boundaries, screening criteria (i.e., threshold enhancement, number of valid plume pixels. The output of each screening run is a XCH4 concentration map by highlighting the regions with high probability of detecting suspect methane plume(s). A list of the potential source locations is also available from the screening result. The noteworthy point is that this toolkit is designed neither for pinpointing the emission source at the facility or component level, nor for screening of small methane leaks (generally <25 tons/hour). For source attributions of the detected suspect plumes, the follow-up targeted fine-scale observations over the regions with high probability of detecting suspect methane plume(s) are required.
 
-## Installation 
-The following were steps taken to run TROPOMI Daily Screening Tookit
-Install packages from command Shell: 
-- if you are using pip environment 
-  -   pip freeze > requirements.txt
-  -   pip install cartopy or pip install git+https://github.com/SciTools/cartopy.git
-- if you are using conda envionment 
-  -   conda list -e > requirements.txt   
-  -   conda install -c conda-forge cartopy
+## Installation
+Python 3.9 or newer is required. Cartopy is easiest from conda-forge.
+
+```bash
+python -m venv .venv
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+If `cartopy` fails to build with pip:
+
+```bash
+conda create -n tropomi python=3.10
+conda activate tropomi
+conda install -c conda-forge cartopy
+pip install -r requirements.txt
+```
+
+Create `AWS_Keys.txt` in the project folder with your Copernicus Data Space S3 keys:
+
+```
+access_key_id: YOUR_ACCESS_KEY
+secret_access_key: YOUR_SECRET_KEY
+```
+
+Generate keys at https://eodata-s3keysmanager.dataspace.copernicus.eu/
+
+Then start the app:
+
+```bash
+python app.py
+```
   
   
 ## Internal default settings
@@ -39,7 +73,7 @@ A well-fitted plume shape is another factor that may influence the identificatio
 Please specify an individual date or a period for daily screening Multiple days screening may cause longer data processing time. 
 Note: If a period is selected, only the screening result of the last day will be displayed on the webpage. For full list of the daily screening results, check the local path: ~/TROPOMI_Daily_Screening_Toolkit-main/assets.
 ### Define regions
-Currently the toolkit only supports screening over a rectangular region. Click <Define polygon> to confirm.
+Currently the toolkit only supports screening over a rectangular region. Draw a rectangle on the map.
 Longitude range: -180 ~ 180, latitude range: -90 ~ 90.
 ### Download Level-2 TROPOMI methane observations
 Click <Download> to download the data files to the local path: ~/TROPOMI_Daily_Screening_Toolkit-main/TROPOMI_data.

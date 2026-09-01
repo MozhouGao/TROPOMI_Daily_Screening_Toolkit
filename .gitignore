@@ -1,0 +1,12 @@
+TROPOMI_data/
+Daily_Global_TROPOMI_Concentration_Maps/
+AWS_Keys.txt
+AWS_keys.txt
+aws_keys.txt
+**/AWS_Keys.txt
+assets/*.jpg
+assets/*.csv
+__pycache__/
+.pytest_cache/
+*.pyc
+.venv/
