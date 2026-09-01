@@ -2,22 +2,87 @@ import os
 from datetime import date, timedelta
 
 import dash
-from dash import dcc, html
+from dash import ctx, dcc, html, no_update
 from dash.dependencies import Input, Output, State
 from dash.exceptions import PreventUpdate
 import dash_leaflet as dl
 
 from TROPOMI_toolkit import (
+    AWS_KEYS_EXAMPLE,
+    aws_keys_are_configured,
     bbox_from_coordinates,
     download_TROPOMI_CH4_L2_data,
     generate_results,
     iter_screening_dates,
+    load_aws_keys,
     Load_CH4,
     screening_plumes,
+    write_aws_keys,
+    write_aws_keys_text,
 )
 
 DEFAULT_THRESHOLD_DELTA = 15
 DEFAULT_MIN_PIXELS = 1
+CREDENTIALS_URL = "https://eodata-s3keysmanager.dataspace.copernicus.eu/"
+
+MODAL_HIDDEN = {
+    "display": "none",
+}
+MODAL_VISIBLE = {
+    "display": "block",
+    "position": "fixed",
+    "top": "0",
+    "left": "0",
+    "right": "0",
+    "bottom": "0",
+    "backgroundColor": "rgba(0, 0, 0, 0.45)",
+    "zIndex": 9999,
+}
+
+
+def credentials_banner_text(keys_path=None):
+    if aws_keys_are_configured(keys_path):
+        return "Credentials saved locally"
+    return "Credentials not set"
+
+
+def open_credential_manager(keys_path=None):
+    access_key, secret_key, raw_text = load_aws_keys(keys_path)
+    return (
+        MODAL_VISIBLE,
+        access_key,
+        secret_key,
+        raw_text or AWS_KEYS_EXAMPLE,
+        "Existing AWS_Keys.txt loaded." if raw_text else "No AWS_Keys.txt yet. Enter keys and save.",
+        credentials_banner_text(keys_path),
+    )
+
+
+def save_credential_fields(access_key, secret_key, keys_path=None):
+    path = write_aws_keys(access_key, secret_key, keys_path)
+    access_key, secret_key, raw_text = load_aws_keys(keys_path)
+    return (
+        MODAL_VISIBLE,
+        access_key,
+        secret_key,
+        raw_text,
+        f"Saved credentials to {os.path.basename(path)}.",
+        credentials_banner_text(keys_path),
+    )
+
+
+def save_credential_file_text(file_text, keys_path=None):
+    path = write_aws_keys_text(file_text, keys_path)
+    access_key, secret_key, raw_text = load_aws_keys(keys_path)
+    return (
+        MODAL_VISIBLE,
+        access_key,
+        secret_key,
+        raw_text,
+        f"Saved file text to {os.path.basename(path)}.",
+        credentials_banner_text(keys_path),
+    )
+
 
 app = dash.Dash(__name__, external_stylesheets=["https://codepen.io/chriddyp/pen/bWLwgP.css"])
 
@@ -25,8 +90,23 @@ app.layout = html.Div([
     html.Div([
         html.H3(
             children="TROPOMI Methane Plume Daily Screening Toolkit - V1.2",
-            style={"textAlign": "center", "color": "#415F4A"},
+            style={"textAlign": "center", "color": "#415F4A", "margin": "0 220px 0 0"},
         ),
+        html.Div([
+            html.Button(
+                "Copernicus credential manager",
+                id="cred-open",
+                n_clicks=0,
+                style={"fontSize": "12px"},
+            ),
+            html.Div(
+                id="cred-banner",
+                children=credentials_banner_text(),
+                style={"fontSize": "11px", "marginTop": "4px", "textAlign": "right"},
+            ),
+        ], style={"position": "absolute", "right": "16px", "top": "10px", "textAlign": "right"}),
+    ], style={"position": "relative", "padding": "12px 16px 8px"}),
+    html.Div([
         html.H5("1. Select Date Range", style={"textAlign": "left", "color": "#415F4A"}),
         dcc.DatePickerRange(
             id="date_picker",
@@ -98,6 +178,57 @@ app.layout = html.Div([
             children=html.Div(id="plot-log"),
         ),
     ], style={"width": "70%", "display": "inline-block", "padding": "10px"}),
+    html.Div(
+        id="cred-modal",
+        style=MODAL_HIDDEN,
+        children=html.Div(
+            style={
+                "backgroundColor": "#fff",
+                "width": "520px",
+                "maxWidth": "92%",
+                "margin": "70px auto",
+                "padding": "20px 22px",
+                "border": "1px solid #c5c5c5",
+            },
+            children=[
+                html.H5("Copernicus credential manager", style={"color": "#415F4A"}),
+                html.P([
+                    "Keys stay in local ",
+                    html.Code("AWS_Keys.txt"),
+                    " and are not uploaded. Generate S3 keys at ",
+                    html.A(CREDENTIALS_URL, href=CREDENTIALS_URL, target="_blank"),
+                    ".",
+                ]),
+                html.Label("access_key_id"),
+                dcc.Input(
+                    id="cred-access",
+                    type="text",
+                    placeholder="S3 access_key_id",
+                    autoComplete="off",
+                    style={"width": "100%", "marginBottom": "10px"},
+                ),
+                html.Label("secret_access_key"),
+                dcc.Input(
+                    id="cred-secret",
+                    type="password",
+                    placeholder="S3 secret_access_key",
+                    autoComplete="off",
+                    style={"width": "100%", "marginBottom": "14px"},
+                ),
+                html.Label("AWS_Keys.txt"),
+                dcc.Textarea(
+                    id="cred-file-text",
+                    style={"width": "100%", "height": "110px", "marginBottom": "10px", "fontFamily": "monospace"},
+                ),
+                html.Div([
+                    html.Button("Save credentials", id="cred-save", n_clicks=0),
+                    html.Button("Save file text", id="cred-save-file", n_clicks=0, style={"marginLeft": "8px"}),
+                    html.Button("Close", id="cred-close", n_clicks=0, style={"marginLeft": "8px"}),
+                ]),
+                html.Div(id="cred-status", style={"marginTop": "10px", "fontSize": "12px"}),
+            ],
+        ),
+    ),
 ])
 
 
@@ -122,6 +253,39 @@ def _result_view(message, figure_path=None):
             style={"width": "100%", "maxWidth": "720px"},
         ))
     return html.Div(children)
+
+
+@app.callback(
+    Output("cred-modal", "style"),
+    Output("cred-access", "value"),
+    Output("cred-secret", "value"),
+    Output("cred-file-text", "value"),
+    Output("cred-status", "children"),
+    Output("cred-banner", "children"),
+    Input("cred-open", "n_clicks"),
+    Input("cred-close", "n_clicks"),
+    Input("cred-save", "n_clicks"),
+    Input("cred-save-file", "n_clicks"),
+    State("cred-access", "value"),
+    State("cred-secret", "value"),
+    State("cred-file-text", "value"),
+    prevent_initial_call=True,
+)
+def manage_credentials(open_clicks, close_clicks, save_clicks, save_file_clicks,
+                       access_key, secret_key, file_text):
+    triggered = ctx.triggered_id
+    if triggered == "cred-open":
+        return open_credential_manager()
+    if triggered == "cred-close":
+        return MODAL_HIDDEN, no_update, no_update, no_update, no_update, credentials_banner_text()
+    try:
+        if triggered == "cred-save":
+            return save_credential_fields(access_key, secret_key)
+        if triggered == "cred-save-file":
+            return save_credential_file_text(file_text)
+    except Exception as exc:
+        return MODAL_VISIBLE, no_update, no_update, no_update, f"Could not save: {exc}", credentials_banner_text()
+    raise PreventUpdate
 
 
 @app.callback(

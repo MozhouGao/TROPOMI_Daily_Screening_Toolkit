@@ -1,3 +1,5 @@
+import os
+import tempfile
 import unittest
 
 from dash.exceptions import PreventUpdate
@@ -51,6 +53,42 @@ class AppCallbackTests(unittest.TestCase):
         with self.assertRaises(PreventUpdate):
             tropomi_app.download_data(0, "2026-08-30", "2026-08-30")
 
+    def test_layout_includes_credential_manager(self):
+        client = tropomi_app.app.server.test_client()
+        layout = client.get("/_dash-layout")
+        self.assertIn(b"Copernicus credential manager", layout.data)
+        self.assertIn(b"cred-open", layout.data)
+
+    def test_open_manager_without_file(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "AWS_Keys.txt")
+            style, access, secret, raw, status, banner = tropomi_app.open_credential_manager(path)
+            self.assertEqual(style["display"], "block")
+            self.assertEqual(access, "")
+            self.assertEqual(secret, "")
+            self.assertIn("access_key_id", raw)
+            self.assertIn("No AWS_Keys.txt yet", status)
+            self.assertEqual(banner, "Credentials not set")
+
+    def test_save_and_reload_from_manager(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "AWS_Keys.txt")
+            tropomi_app.save_credential_fields("AKIAUI", "secret-ui", path)
+            style, access, secret, raw, status, banner = tropomi_app.open_credential_manager(path)
+            self.assertEqual(access, "AKIAUI")
+            self.assertEqual(secret, "secret-ui")
+            self.assertIn("Existing AWS_Keys.txt loaded", status)
+            self.assertEqual(banner, "Credentials saved locally")
+            tropomi_app.save_credential_file_text(
+                "access_key_id: edited\nsecret_access_key: from-file\n",
+                path,
+            )
+            _, access, secret, raw, _, _ = tropomi_app.open_credential_manager(path)
+            self.assertEqual(access, "edited")
+            self.assertEqual(secret, "from-file")
+            self.assertTrue(os.path.isfile(path))
+
 
 if __name__ == "__main__":
     unittest.main()
+

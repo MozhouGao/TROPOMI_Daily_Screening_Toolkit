@@ -1,18 +1,24 @@
 import os
+import tempfile
 import unittest
 from datetime import date
 
 import numpy as np
 
 from TROPOMI_toolkit import (
+    aws_keys_are_configured,
     bbox_from_coordinates,
     is_ch4_l2_nc,
     iter_screening_dates,
+    load_aws_keys,
     local_download_path,
     nanargmax,
+    read_aws_keys,
     screening_plumes,
     tropomi_sensing_start_date,
     unique_hotspots,
+    write_aws_keys,
+    write_aws_keys_text,
 )
 
 
@@ -129,5 +135,41 @@ class ScreeningTests(unittest.TestCase):
         self.assertEqual(nanargmax(arr), (1, 0))
 
 
+class AwsKeysFileTests(unittest.TestCase):
+    def test_write_and_reload_keys(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "AWS_Keys.txt")
+            write_aws_keys("AKIAEXAMPLE", "secret-example", path)
+            access, secret, raw = load_aws_keys(path)
+            self.assertEqual(access, "AKIAEXAMPLE")
+            self.assertEqual(secret, "secret-example")
+            self.assertIn("access_key_id: AKIAEXAMPLE", raw)
+            self.assertTrue(aws_keys_are_configured(path))
+            self.assertEqual(read_aws_keys(path), ("AKIAEXAMPLE", "secret-example"))
+
+    def test_edit_raw_file_text(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "AWS_Keys.txt")
+            write_aws_keys_text(
+                "access_key_id: first\nsecret_access_key: one\n",
+                path,
+            )
+            write_aws_keys_text(
+                "access_key_id: second\nsecret_access_key: two\n# comment\n",
+                path,
+            )
+            access, secret, raw = load_aws_keys(path)
+            self.assertEqual(access, "second")
+            self.assertEqual(secret, "two")
+            self.assertIn("# comment", raw)
+
+    def test_missing_file_is_empty(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "AWS_Keys.txt")
+            self.assertEqual(load_aws_keys(path), ("", "", ""))
+            self.assertFalse(aws_keys_are_configured(path))
+
+
 if __name__ == "__main__":
     unittest.main()
+

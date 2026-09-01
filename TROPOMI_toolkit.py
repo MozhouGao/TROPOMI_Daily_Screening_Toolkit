@@ -60,22 +60,79 @@ def local_download_path(target_dir, filename):
     return os.path.join(target_dir, os.path.basename(filename))
 
 
-def read_aws_keys(keys_path=None):
-    keys_path = keys_path or os.path.join(os.getcwd(), "AWS_Keys.txt")
-    if not os.path.isfile(keys_path):
-        raise FileNotFoundError(
-            "AWS_Keys.txt not found. Create it in the project folder with "
-            "access_key_id and secret_access_key from "
-            "https://eodata-s3keysmanager.dataspace.copernicus.eu/"
-        )
+AWS_KEYS_FILENAME = "AWS_Keys.txt"
+AWS_KEYS_EXAMPLE = (
+    "access_key_id: YOUR_ACCESS_KEY\n"
+    "secret_access_key: YOUR_SECRET_KEY\n"
+)
+
+
+def aws_keys_path(keys_path=None):
+    return keys_path or os.path.join(os.getcwd(), AWS_KEYS_FILENAME)
+
+
+def parse_aws_keys(text):
     access_key = ""
     secret_key = ""
-    with open(keys_path, "r", encoding="utf-8") as handle:
-        for line in handle:
-            if "access_key_id" in line:
-                access_key = line.split(":")[-1].strip()
-            if "secret_access_key" in line:
-                secret_key = line.split(":")[-1].strip()
+    for line in (text or "").splitlines():
+        if "access_key_id" in line:
+            access_key = line.split(":", 1)[-1].strip()
+        if "secret_access_key" in line:
+            secret_key = line.split(":", 1)[-1].strip()
+    return access_key, secret_key
+
+
+def format_aws_keys(access_key, secret_key):
+    return (
+        f"access_key_id: {(access_key or '').strip()}\n"
+        f"secret_access_key: {(secret_key or '').strip()}\n"
+    )
+
+
+def load_aws_keys(keys_path=None):
+    """Return (access_key, secret_key, raw_text). Missing file -> empty strings."""
+    path = aws_keys_path(keys_path)
+    if not os.path.isfile(path):
+        return "", "", ""
+    with open(path, "r", encoding="utf-8") as handle:
+        raw = handle.read()
+    access_key, secret_key = parse_aws_keys(raw)
+    return access_key, secret_key, raw
+
+
+def aws_keys_are_configured(keys_path=None):
+    access_key, secret_key, _ = load_aws_keys(keys_path)
+    return bool(access_key and secret_key)
+
+
+def write_aws_keys(access_key, secret_key, keys_path=None):
+    access_key = (access_key or "").strip()
+    secret_key = (secret_key or "").strip()
+    if not access_key or not secret_key:
+        raise ValueError("Both access_key_id and secret_access_key are required.")
+    return write_aws_keys_text(format_aws_keys(access_key, secret_key), keys_path)
+
+
+def write_aws_keys_text(text, keys_path=None):
+    access_key, secret_key = parse_aws_keys(text)
+    if not access_key or not secret_key:
+        raise ValueError("File text must include access_key_id and secret_access_key.")
+    path = aws_keys_path(keys_path)
+    contents = text if text.endswith("\n") else f"{text}\n"
+    with open(path, "w", encoding="utf-8") as handle:
+        handle.write(contents)
+    return path
+
+
+def read_aws_keys(keys_path=None):
+    access_key, secret_key, raw = load_aws_keys(keys_path)
+    if not raw and not os.path.isfile(aws_keys_path(keys_path)):
+        raise FileNotFoundError(
+            "AWS_Keys.txt not found. Use Copernicus credential manager "
+            "or create the file in the project folder with access_key_id "
+            "and secret_access_key from "
+            "https://eodata-s3keysmanager.dataspace.copernicus.eu/"
+        )
     if not access_key or not secret_key:
         raise ValueError(
             "AWS_Keys.txt is missing access_key_id or secret_access_key."
