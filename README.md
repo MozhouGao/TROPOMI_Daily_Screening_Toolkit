@@ -8,6 +8,7 @@
 - Date, map, and threshold controls no longer re-trigger download or screening.
 - The map uses the rectangle bounding box (min/max lon/lat) instead of GeoJSON corner indices.
 - Screening maps are shown in the app. Thresholds default to 15 ppb and 1 pixel when left blank.
+- Copernicus credential manager (top right) creates and edits local `AWS_Keys.txt`.
 
 # TROPOMI Daily Screening Toolkit - Version 1.1 
 ### Release Notes
@@ -42,14 +43,14 @@ conda install -c conda-forge cartopy
 pip install -r requirements.txt
 ```
 
-Create `AWS_Keys.txt` in the project folder with your Copernicus Data Space S3 keys:
+Add Copernicus S3 keys with the **Copernicus credential manager** button at the top right of the app, or create `AWS_Keys.txt` in the project folder:
 
 ```
 access_key_id: YOUR_ACCESS_KEY
 secret_access_key: YOUR_SECRET_KEY
 ```
 
-Generate keys at https://eodata-s3keysmanager.dataspace.copernicus.eu/
+Generate keys at https://eodata-s3keysmanager.dataspace.copernicus.eu/. `AWS_Keys.txt` stays local and is gitignored.
 
 Then start the app:
 
