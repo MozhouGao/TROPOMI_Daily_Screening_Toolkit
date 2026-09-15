@@ -44,10 +44,48 @@ class AppCallbackTests(unittest.TestCase):
         self.assertEqual(tropomi_app.download_data(1, None, None), "Please select a start date.")
 
     def test_screening_requires_region(self):
-        self.assertEqual(
-            tropomi_app.run_analysis(1, "2026-08-30", "2026-08-30", None, None, None),
-            "Please define the region.",
+        message, records, columns, button_style, table_style, button_label, visible = (
+            tropomi_app.run_analysis(1, "2026-08-30", "2026-08-30", None, None, None)
         )
+        self.assertEqual(message, "Please define the region.")
+        self.assertEqual(records, [])
+        self.assertEqual(columns, [])
+        self.assertEqual(button_style["display"], "none")
+        self.assertEqual(table_style["display"], "none")
+        self.assertEqual(button_label, "Show table")
+        self.assertFalse(visible)
+
+    def test_records_from_exported_csv(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "plumes_20260830.csv")
+            with open(path, "w", encoding="utf-8") as handle:
+                handle.write(
+                    "Plume ID,Maximum Enhancement (ppb),longitude,latitude,Emission rate (kg/hr)\n"
+                    "0,42.5,-114.1,51.0,120.0\n"
+                )
+            records = tropomi_app.plume_records_from_csvs([path])
+            self.assertEqual(len(records), 1)
+            self.assertEqual(records[0]["Plume ID"], 0)
+            self.assertEqual(records[0]["longitude"], -114.1)
+            columns = tropomi_app.plume_table_columns(records)
+            self.assertEqual(columns[0], {"name": "Plume ID", "id": "Plume ID"})
+
+    def test_toggle_table_show_and_hide(self):
+        label, style, visible = tropomi_app.toggle_plume_table(1, False)
+        self.assertEqual(label, "Hide table")
+        self.assertEqual(style["display"], "block")
+        self.assertTrue(visible)
+        label, style, visible = tropomi_app.toggle_plume_table(2, True)
+        self.assertEqual(label, "Show table")
+        self.assertEqual(style["display"], "none")
+        self.assertFalse(visible)
+
+    def test_layout_includes_table_toggle(self):
+        client = tropomi_app.app.server.test_client()
+        layout = client.get("/_dash-layout")
+        self.assertIn(b"toggle-plume-table", layout.data)
+        self.assertIn(b"plume-table", layout.data)
+        self.assertIn(b"Show table", layout.data)
 
     def test_prevent_update_on_empty_click(self):
         with self.assertRaises(PreventUpdate):

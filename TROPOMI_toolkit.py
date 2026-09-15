@@ -566,9 +566,9 @@ def generate_results(grid_lon, grid_lat, fch4, detected_plumes, detected_plume_w
         "latitude": max_lats,
         "Emission rate (kg/hr)": Q,
     })
-    df.to_csv(os.path.join("assets", f"plumes_{date_str}_{maxlon}_{minlon}_{maxlat}_{minlat}.csv"),
-              sep=",", index=False)
-    return figure_name
+    csv_name = os.path.join("assets", f"plumes_{date_str}_{maxlon}_{minlon}_{maxlat}_{minlat}.csv")
+    df.to_csv(csv_name, sep=",", index=False)
+    return figure_name, csv_name
 
 
 def find_indices(target_lon, target_lat, X, Y):

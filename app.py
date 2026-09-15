@@ -2,7 +2,8 @@ import os
 from datetime import date, timedelta
 
 import dash
-from dash import ctx, dcc, html, no_update
+import pandas as pd
+from dash import ctx, dash_table, dcc, html, no_update
 from dash.dependencies import Input, Output, State
 from dash.exceptions import PreventUpdate
 import dash_leaflet as dl
@@ -25,6 +26,9 @@ DEFAULT_THRESHOLD_DELTA = 15
 DEFAULT_MIN_PIXELS = 1
 CREDENTIALS_URL = "https://eodata-s3keysmanager.dataspace.copernicus.eu/"
 
+TABLE_HIDDEN = {"display": "none"}
+TABLE_BUTTON_VISIBLE = {"display": "inline-block", "marginTop": "8px"}
+TABLE_WRAP_VISIBLE = {"display": "block", "marginTop": "10px", "maxWidth": "100%"}
 MODAL_HIDDEN = {
     "display": "none",
 }
@@ -38,6 +42,42 @@ MODAL_VISIBLE = {
     "backgroundColor": "rgba(0, 0, 0, 0.45)",
     "zIndex": 9999,
 }
+
+
+def plume_records_from_csvs(csv_paths):
+    frames = []
+    for path in csv_paths or []:
+        if path and os.path.isfile(path):
+            frames.append(pd.read_csv(path))
+    if not frames:
+        return []
+    combined = pd.concat(frames, ignore_index=True)
+    return combined.to_dict("records")
+
+
+def plume_table_columns(records):
+    if not records:
+        return []
+    return [{"name": column, "id": column} for column in records[0].keys()]
+
+
+def empty_table_controls():
+    return [], [], TABLE_HIDDEN, TABLE_HIDDEN, "Show table", False
+
+
+def table_controls_from_records(records):
+    if not records:
+        return empty_table_controls()
+    return records, plume_table_columns(records), TABLE_BUTTON_VISIBLE, TABLE_HIDDEN, "Show table", False
+
+
+def toggle_plume_table(n_clicks, visible):
+    if not n_clicks:
+        raise PreventUpdate
+    show = not bool(visible)
+    if show:
+        return "Hide table", TABLE_WRAP_VISIBLE, True
+    return "Show table", TABLE_HIDDEN, False
 
 
 def credentials_banner_text(keys_path=None):
@@ -176,6 +216,26 @@ app.layout = html.Div([
             id="loading-screening",
             type="circle",
             children=html.Div(id="plot-log"),
+        ),
+        dcc.Store(id="plume-table-visible", data=False),
+        html.Button(
+            "Show table",
+            id="toggle-plume-table",
+            n_clicks=0,
+            style={"display": "none"},
+        ),
+        html.Div(
+            id="plume-table-wrap",
+            style={"display": "none"},
+            children=dash_table.DataTable(
+                id="plume-table",
+                columns=[],
+                data=[],
+                page_size=10,
+                style_table={"overflowX": "auto"},
+                style_cell={"fontSize": "12px", "textAlign": "left", "padding": "6px"},
+                style_header={"fontWeight": "bold"},
+            ),
         ),
     ], style={"width": "70%", "display": "inline-block", "padding": "10px"}),
     html.Div(
@@ -347,6 +407,12 @@ def download_data(n_clicks, start_date, end_date):
 
 @app.callback(
     Output("plot-log", "children"),
+    Output("plume-table", "data"),
+    Output("plume-table", "columns"),
+    Output("toggle-plume-table", "style"),
+    Output("plume-table-wrap", "style"),
+    Output("toggle-plume-table", "children"),
+    Output("plume-table-visible", "data"),
     Input("screening-val", "n_clicks"),
     State("date_picker", "start_date"),
     State("date_picker", "end_date"),
@@ -358,14 +424,15 @@ def download_data(n_clicks, start_date, end_date):
 def run_analysis(n_clicks, start_date, end_date, geojson, thda, min_pix):
     if not n_clicks:
         raise PreventUpdate
+    hidden = empty_table_controls()
     if start_date is None:
-        return "Please select a start date."
+        return "Please select a start date.", *hidden
     if end_date is None:
         end_date = start_date
 
     ring = _first_polygon_ring(geojson)
     if ring is None:
-        return "Please define the region."
+        return "Please define the region.", *hidden
 
     threshold_delta = DEFAULT_THRESHOLD_DELTA if thda is None else int(thda)
     min_pixels = DEFAULT_MIN_PIXELS if min_pix is None else int(min_pix)
@@ -373,6 +440,7 @@ def run_analysis(n_clicks, start_date, end_date, geojson, thda, min_pix):
     try:
         minlat, maxlat, minlon, maxlon = bbox_from_coordinates(ring)
         last_path = None
+        csv_paths = []
         screened_days = 0
         plume_days = 0
         for screening_date in iter_screening_dates(start_date, end_date):
@@ -383,30 +451,51 @@ def run_analysis(n_clicks, start_date, end_date, geojson, thda, min_pix):
             detected = screening_plumes(
                 fch4, fwind, fpressure, grid_lon, grid_lat, threshold_delta, min_pixels
             )
-            last_path = generate_results(
+            last_path, csv_path = generate_results(
                 grid_lon,
                 grid_lat,
                 fch4,
                 *detected,
                 screening_date.strftime("%Y%m%d"),
             )
+            csv_paths.append(csv_path)
             if detected[0]:
                 plume_days += 1
 
+        records = plume_records_from_csvs(csv_paths)
+        table_outputs = table_controls_from_records(records)
         if screened_days == 0:
-            return "No dates to screen."
+            return "No dates to screen.", *hidden
         if plume_days == 0:
-            return _result_view(
-                "No ultra-emitter event detected in your region.",
-                last_path,
+            return (
+                _result_view(
+                    "No ultra-emitter event detected in your region.",
+                    last_path,
+                ),
+                *table_outputs,
             )
-        return _result_view(
-            f"Suspect plumes found on {plume_days} of {screened_days} day(s). "
-            "Maps and CSVs are in ./assets.",
-            last_path,
+        return (
+            _result_view(
+                f"Suspect plumes found on {plume_days} of {screened_days} day(s). "
+                "Maps and CSVs are in ./assets.",
+                last_path,
+            ),
+            *table_outputs,
         )
     except Exception as exc:
-        return f"Screening failed: {exc}"
+        return f"Screening failed: {exc}", *hidden
+
+
+@app.callback(
+    Output("toggle-plume-table", "children", allow_duplicate=True),
+    Output("plume-table-wrap", "style", allow_duplicate=True),
+    Output("plume-table-visible", "data", allow_duplicate=True),
+    Input("toggle-plume-table", "n_clicks"),
+    State("plume-table-visible", "data"),
+    prevent_initial_call=True,
+)
+def toggle_results_table(n_clicks, visible):
+    return toggle_plume_table(n_clicks, visible)
 
 
 if __name__ == "__main__":
