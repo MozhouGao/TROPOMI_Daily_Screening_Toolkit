@@ -1,0 +1,11 @@
+---
+description: Keep .specs/ as the planning knowledge base
+alwaysApply: true
+---
+
+# Specs discipline
+
+- Plans, milestones, and ADRs live under `.specs/`.
+- Update specs on the same branch as the code change before merge.
+- Prefer citing normative docs by pointer; do not duplicate facts that will drift.
+- Spec-only commits use a `docs:` Conventional Commit prefix.

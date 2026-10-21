@@ -1,0 +1,11 @@
+---
+description: Worktree, commit/push, and draft-PR discipline
+alwaysApply: true
+---
+
+# Worktree and PR
+
+- Never implement on `main` / `master`. Use an issue branch or worktree under `.trees/`.
+- Commit and push meaningful progress; do not leave large uncommitted diffs.
+- Open PRs as **draft**. `/build` does not mark ready; `/merge-pr` does after review.
+- Never use `gh pr merge --admin` or force-push to shared default branches.

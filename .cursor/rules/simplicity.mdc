@@ -1,0 +1,10 @@
+---
+description: Prefer the smallest change that meets the requirement
+alwaysApply: true
+---
+
+# Simplicity
+
+- Solve the stated problem; do not build speculative platforms.
+- Prefer extending an existing pattern over introducing a parallel one.
+- Delete or avoid dead abstractions. YAGNI applies to agent scaffolding too.

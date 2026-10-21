@@ -1,0 +1,11 @@
+---
+description: Secrets and sensitive data must not enter git or transcripts
+alwaysApply: true
+---
+
+# Security
+
+- Never commit API keys, tokens, passwords, or `.env` files with secrets.
+- Do not paste production credentials into the chat transcript.
+- Prefer synthetic fixtures for tests; avoid customer-identifying raw data in git.
+- Flag accidental secret exposure immediately and rotate if needed.

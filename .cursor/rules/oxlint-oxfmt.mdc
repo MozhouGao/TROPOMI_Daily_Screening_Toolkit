@@ -1,0 +1,23 @@
+---
+description: Code quality, formatting, and linting rules using Oxlint and Oxfmt
+globs: "**/*.{ts,tsx,js,jsx,json,css,scss}"
+alwaysApply: true
+---
+
+# Code Quality, Linting, and Formatting
+
+This project uses **Oxlint** for high-performance JavaScript/TypeScript linting and **Oxfmt** for consistent formatting.
+
+## Core Rules & Principles
+
+1. **Formatter**: Use `pnpm format` (`oxfmt --write`) for code formatting.
+2. **Linter**: Use `pnpm lint` (`oxlint`) for static analysis and correctness.
+3. **Build Tool**: Use Vite (`pnpm build`, `pnpm dev`) for application bundling.
+4. **Test Framework**: Use Vitest (`pnpm test`) with testing-library and jsdom.
+5. **Strict Type Safety**: TypeScript with strict mode, no implicit any, type-only imports where appropriate (`import type`).
+
+## Verification Commands
+- `pnpm lint`: Run Oxlint checks.
+- `pnpm format`: Run Oxfmt formatter.
+- `pnpm test`: Run Vitest test suites.
+- `pnpm build`: Run TypeScript check and Vite build.
