@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "hooks": {
+    "beforeShellExecution": [
+      {
+        "command": "python .cursor/hooks/block_destructive.py",
+        "failClosed": false
+      },
+      {
+        "command": "python .cursor/hooks/block_env_leak.py",
+        "failClosed": false
+      },
+      {
+        "command": "python .cursor/hooks/commitlint.py",
+        "failClosed": false
+      }
+    ],
+    "preToolUse": [
+      {
+        "command": "python .cursor/hooks/block_main_edits.py",
+        "matcher": "Write|StrReplace|Delete|EditNotebook",
+        "failClosed": false
+      }
+    ]
+  }
+}

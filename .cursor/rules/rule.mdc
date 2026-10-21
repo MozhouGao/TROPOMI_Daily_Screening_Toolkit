@@ -1,0 +1,120 @@
+---
+globs: "**/*.{ts,tsx,js,jsx}"
+alwaysApply: true
+---
+
+## 🚫 General Rules
+
+- use less code as possible to implement feature, since code is debt.
+- Do **not** auto start the project with `pnpm start`.
+- Do **not** auto-commit any code changes.
+- Always use self-explanatory function, variable, and file names, instead of using comments to explain what the code does.
+- Use **positive conditions** instead of negative ones.
+- When updating Cursor rules, automatically update GitHub Copilot rules (`.github/copilot.md`) to match. Cursor rules are the base.
+- When creating pull requests, always use `.github/pull_request_template.md` as the base template.
+- Use object destructuring for function props
+- Use default exports instead of named exports for hooks and components
+
+## ✅ Commit Messages
+
+- Use Conventional Commits format:  
+  `<type>: <description>`
+- The message length should be less than 120 characters.
+
+
+## 📁 Component Structure
+
+- Place each component in a folder named after the component.
+- Required files in each component folder:
+  - `index.tsx` for logic
+  - `index.module.scss` for styles
+- Do **not** use inline styles.
+
+## ⚛️ React & UI Libraries
+
+- Use:
+  - `@ant-design/pro-components` (preferred)
+  - `antd` (fallback)
+  - `antV` for advanced visualizations
+  - `ahooks` for hooks
+  - `luxon` for time/date (not `dayjs`)
+  - `@tanstack/react-router` for routing
+- React rules:
+  - Add a blank line between each hook
+  - Define named functions inside `useEffect`
+  - If a component > 150 lines, split into:
+    - Subcomponents
+    - Hooks
+    - Utils
+    - Types
+    - Constants
+- **Date/Time Rule:**
+  - Use `luxon` for all date/time operations throughout the application.
+  - Use custom Luxon-based Ant Design components from `@/shared/components/ui` for all datetime pickers and calendars.
+  - Import: `import { DatePicker, TimePicker, Calendar } from '@/shared/components/ui'`
+  - Do **not** use `dayjs` anywhere in the application.
+- **Loading Component Rule:**
+  - Always use our custom `Loading` component from `@/shared/components/ui/Loading`
+  - Do **not** use Ant Design's `Spin` component for loading states
+  - Import: `import Loading from '@/shared/components/ui/Loading'`
+
+## 🟦 TypeScript Practices
+
+- Do **not** use `any`. Use the correct type or `unknown`.
+- Preferred libraries/tools:
+  - `jotai` for state management
+  - `@tanstack/react-query` for server state management and data fetching
+  - `rsbuild` for building
+  - `loglevel` for logging (if needed)
+  - `nanoid` for unique IDs
+  - `Sentry` for error tracking
+  - `lodash` (full imports, use `_()` instead of `_.chain()`)
+- Other conventions:
+  - Use `.ts` for config files
+  - Use `camelCase` for naming
+  - Use `type` over `interface`
+  - Use arrow functions and default exports
+  - Add `@types/*` as dev dependencies
+  - Format all code with Prettier
+
+## 🔄 Data Fetching & Server State Management
+
+- **Use `@tanstack/react-query` for all server state management:**
+  - API calls and data fetching
+  - Caching and background updates
+  - Loading and error states
+  - Optimistic updates for mutations
+- **When to use React Query:**
+  - ✅ Fetching data from APIs (GET requests)
+  - ✅ Creating, updating, deleting data (POST/PUT/DELETE)
+  - ✅ Real-time data that needs caching
+  - ✅ Data shared across multiple components
+  - ❌ Local component state (use `useState` instead)
+  - ❌ Form state (use form libraries instead)
+- **React Query Patterns:**
+  - Use `atomWithQuery` for read operations
+  - Use `atomWithMutation` for write operations
+  - Implement optimistic updates for better UX
+  - Set appropriate `staleTime` and `gcTime` for caching
+  - Use `queryClient.invalidateQueries()` to refresh data after mutations
+
+## 🌐 i18n & Env Variables
+
+- when create new components or updating existing ones, always ensure all display messages are properly internationalized, add the translation keys to the translation files.
+- Store all translations in `src/i18n/locales`
+- Do **not** create translation files elsewhere (e.g., no `translation.json` in other places)
+
+
+## 💡 Code Style & Structure
+
+- Split large components into smaller ones less than 500 lines
+- Avoid over-nesting
+- Follow **DRY** (Don't Repeat Yourself) principles
+- When refactoring or splitting code, **do not change existing features**
+- Maintain a **clean and logical folder structure**
+
+### Error Handling Best Practices
+
+- ✅ Catch errors
+- ✅ Update the UI accordingly
+- ✅ Log errors properly (e.g., with `loglevel`)

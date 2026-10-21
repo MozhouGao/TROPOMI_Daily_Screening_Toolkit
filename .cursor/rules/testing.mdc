@@ -1,0 +1,11 @@
+---
+description: Tests are part of the definition of done
+alwaysApply: true
+---
+
+# Testing
+
+- New behavior ships with tests (unit and/or integration as appropriate).
+- Prefer deterministic tests and synthetic fixtures.
+- Do not weaken assertions to make a flaky test pass without understanding root cause.
+- Wire project-specific test commands into the `verify` skill.
