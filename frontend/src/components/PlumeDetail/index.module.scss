@@ -1,0 +1,30 @@
+.panel {
+  padding: 12px 14px;
+}
+
+.title {
+  margin-top: 0;
+}
+
+.image {
+  width: 100%;
+  max-height: 260px;
+  object-fit: contain;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+}
+
+.noImage {
+  display: block;
+  font-size: 12px;
+}
+
+.fields {
+  margin-top: 10px;
+}
+
+.attribution {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: #4b5563;
+}

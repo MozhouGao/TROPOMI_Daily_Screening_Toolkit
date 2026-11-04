@@ -1,5 +1,10 @@
 TROPOMI_data/
 MARS_data/
+GHGSat_data/
+Cusworth_data/
+GHGRP_data/
+Nesser_data/
+CanadaNIR_data/
 .trees/
 Daily_Global_TROPOMI_Concentration_Maps/
 AWS_Keys.txt
@@ -12,3 +17,6 @@ __pycache__/
 .pytest_cache/
 *.pyc
 .venv/
+.pnpm-store/
+frontend/node_modules/
+frontend/dist/

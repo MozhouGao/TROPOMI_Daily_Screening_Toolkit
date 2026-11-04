@@ -4,7 +4,7 @@ from urllib.request import Request, urlopen
 from backend.schemas import SourceError
 
 USER_AGENT = "TROPOMI-Daily-Screening-Toolkit"
-DEFAULT_TIMEOUT_SECONDS = 60
+DEFAULT_TIMEOUT_SECONDS = 120
 
 
 def fetch_bytes(url: str, timeout: float = DEFAULT_TIMEOUT_SECONDS) -> bytes:

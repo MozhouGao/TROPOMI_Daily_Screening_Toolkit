@@ -5,14 +5,40 @@ from typing import Callable, Dict
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.schemas import BBox, DateRange, PlumeCollection, SourceError
-from backend.sources import carbonmapper, mars
+from backend.schemas import (
+    BBox,
+    CredentialStatus,
+    CredentialWrite,
+    DateRange,
+    DateWindow,
+    PlumeCollection,
+    ScreenRequest,
+    SourceError,
+    TropomiScreenResult,
+)
+from backend.sources import (
+    canada_nir,
+    carbonmapper,
+    cusworth,
+    ghgrp_ca,
+    ghgrp_us,
+    ghgsat,
+    mars,
+    nesser,
+    tropomi,
+)
 
 PlumeFetcher = Callable[[BBox, DateRange], PlumeCollection]
 
 PLUME_SOURCES: Dict[str, PlumeFetcher] = {
     carbonmapper.SOURCE_ID: carbonmapper.fetch_plumes,
     mars.SOURCE_ID: mars.fetch_plumes,
+    ghgsat.SOURCE_ID: ghgsat.fetch_plumes,
+    cusworth.SOURCE_ID: cusworth.fetch_plumes,
+    ghgrp_us.SOURCE_ID: ghgrp_us.fetch_plumes,
+    ghgrp_ca.SOURCE_ID: ghgrp_ca.fetch_plumes,
+    nesser.SOURCE_ID: nesser.fetch_plumes,
+    canada_nir.SOURCE_ID: canada_nir.fetch_plumes,
 }
 
 app = FastAPI(title="Methane Data Screening Toolkit API", version="2.0.0")
@@ -42,11 +68,55 @@ def list_plumes(
     fetcher = PLUME_SOURCES.get(source)
     if fetcher is None:
         raise HTTPException(status_code=404, detail=f"Unknown plume source '{source}'")
+    bbox = _bbox_or_422(west, south, east, north)
+    dates = _dates_or_422(start, end)
+    try:
+        return fetcher(bbox, dates)
+    except SourceError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+
+def _bbox_or_422(west: float, south: float, east: float, north: float) -> BBox:
     if west > east or south > north:
         raise HTTPException(status_code=422, detail="Bounding box edges are inverted")
+    return BBox(west, south, east, north)
+
+
+def _dates_or_422(start: date, end: date) -> DateRange:
     if start > end:
         raise HTTPException(status_code=422, detail="start must be on or before end")
+    return DateRange(start, end)
+
+
+@app.get("/api/tropomi/credentials", response_model=CredentialStatus)
+def get_credentials() -> CredentialStatus:
+    return tropomi.credential_status()
+
+
+@app.put("/api/tropomi/credentials", response_model=CredentialStatus)
+def put_credentials(payload: CredentialWrite) -> CredentialStatus:
     try:
-        return fetcher(BBox(west, south, east, north), DateRange(start, end))
+        return tropomi.save_credentials(payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.post("/api/tropomi/download")
+def tropomi_download(window: DateWindow) -> Dict[str, str]:
+    dates = _dates_or_422(window.start, window.end)
+    try:
+        return {"message": tropomi.download_observations(dates)}
+    except SourceError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+
+@app.post("/api/tropomi/screen", response_model=TropomiScreenResult)
+def tropomi_screen(payload: ScreenRequest) -> TropomiScreenResult:
+    bbox = _bbox_or_422(payload.west, payload.south, payload.east, payload.north)
+    dates = _dates_or_422(payload.start, payload.end)
+    try:
+        return tropomi.screen_region(
+            bbox, dates, payload.threshold_delta, payload.min_pixels
+        )
     except SourceError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc

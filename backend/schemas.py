@@ -55,5 +55,50 @@ class PlumeCollection(CamelModel):
     license_url: str
 
 
+class GridOverlay(CamelModel):
+    image_url: str
+    west: float
+    south: float
+    east: float
+    north: float
+
+
+class TropomiScreenResult(PlumeCollection):
+    overlay: Optional[GridOverlay] = None
+    message: str
+    figure_path: Optional[str] = None
+    screened_days: int
+    plume_days: int
+
+
+class CredentialStatus(CamelModel):
+    configured: bool
+    access_key_id: str = ""
+    file_text: str = ""
+    example: str = ""
+
+
+class CredentialWrite(CamelModel):
+    access_key_id: Optional[str] = None
+    secret_access_key: Optional[str] = None
+    file_text: Optional[str] = None
+
+
+class DateWindow(CamelModel):
+    start: date
+    end: date
+
+
+class ScreenRequest(CamelModel):
+    west: float
+    south: float
+    east: float
+    north: float
+    start: date
+    end: date
+    threshold_delta: int = 15
+    min_pixels: int = 1
+
+
 class SourceError(Exception):
     """Raised when an upstream provider cannot be read."""

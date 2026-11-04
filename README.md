@@ -1,37 +1,41 @@
-# TROPOMI Daily Screening Toolkit - Version 1.2
-### Release Notes
-#### Updates:
-- Screening now walks every selected day, including single-day and cross-month ranges.
-- Downloads write into `TROPOMI_data/` on macOS, Linux, and Windows.
-- Daily remaps initialize empty cells as NaN and average duplicate grid hits.
-- Download prefers OFFL CH4 files and falls back to NRTI when OFFL is not published yet.
-- Date, map, and threshold controls no longer re-trigger download or screening.
-- The map uses the rectangle bounding box (min/max lon/lat) instead of GeoJSON corner indices.
-- Screening maps are shown in the app. Thresholds default to 15 ppb and 1 pixel when left blank.
-- Copernicus credential manager (top right) creates and edits local `AWS_Keys.txt`.
+# Methane Data Screening Toolkit - Version 2.1
 
-# TROPOMI Daily Screening Toolkit - Version 1.1 
-### Release Notes
-#### Updates:
-##### 1.TROPOMI Data Download: Migrated from Sentinelsat to Boto3 for data retrieval: https://documentation.dataspace.copernicus.eu/APIs/S3.html#accessing-eodata-via-aws-cli
--   To enable API access, follow the EODATA credential generation guide: https://eodata-s3keysmanager.dataspace.copernicus.eu/
--   If you do not have an account, register here: https://documentation.dataspace.copernicus.eu/Registration.html
--   Once credentials are generated, store your access and secret key in a file named AWS_Keys.txt under the workspace. Set up access credentials using the provided example.
-![image](https://github.com/user-attachments/assets/fa541963-3e3e-4271-bad1-c390e040d830)
+Browse methane plumes from several public sources on one map, and run the
+existing TROPOMI patch screening over a drawn region and date range.
 
-  ##### 2.Added map-based selection.
+Layers:
 
-# TROPOMI Daily Screening Toolkit - Version 1.0 
-## Summary
-This toolkit is developed to automatically screen the suspect methane (CH4) plumes over a user defined region based on the public accessible satellite observations (i.e., methane dry air mixing ratio from TROPOMI). Users are required to input several parameters to complete the screening process, including: the screening date(s), region boundaries, screening criteria (i.e., threshold enhancement, number of valid plume pixels. The output of each screening run is a XCH4 concentration map by highlighting the regions with high probability of detecting suspect methane plume(s). A list of the potential source locations is also available from the screening result. The noteworthy point is that this toolkit is designed neither for pinpointing the emission source at the facility or component level, nor for screening of small methane leaks (generally <25 tons/hour). For source attributions of the detected suspect plumes, the follow-up targeted fine-scale observations over the regions with high probability of detecting suspect methane plume(s) are required.
+- **TROPOMI screening** — Sentinel-5P XCH4 ultra-emitter patches (this toolkit's algorithm).
+- **Carbon Mapper** — facility-scale CH4 plumes from the public catalog API.
+- **UNEP IMEO MARS** — the public Eye on Methane plume export (CC BY-NC-SA 4.0).
+- **GHGSat landfills** — Dogniaux et al. 2021–2022 landfill plumes (Zenodo 16641834).
+- **US / Canada GHGRP** — latest self-reported facility CH4 (EPA Envirofacts, ECCC Data Mart).
+- **Cusworth landfills 2024** — US landfill aircraft campaign with GHGRP IDs (default off).
+- **Nesser landfills 2019** — TROPOMI inversion posteriors (default off).
+- **Canada NIR 2018 grid** — Scarpelli 0.1° inventory cells ≥ 1 kg/hr (default off).
+
+Carbon Mapper and MARS detections are independent of TROPOMI patch screening.
+They are facility-scale observations with the provider's stated uncertainty.
+Both live catalogs are licensed for **non-commercial** use. See
+[Carbon Mapper terms](https://carbonmapper.org/terms) and the
+[MARS data dictionary](https://methanedata.unep.org/dict-mars-plumes).
+
+Archive layers (GHGSat, GHGRP, Cusworth, Nesser, Canada NIR) ignore the time
+window because they are annual or campaign vintages. US GHGRP CH4 is converted
+from reported tCO2e with AR4 GWP 25. Cache directories (`GHGSat_data/`,
+`GHGRP_data/`, `Cusworth_data/`, `Nesser_data/`, `CanadaNIR_data/`) stay local
+and are gitignored.
 
 ## Installation
-Python 3.9 or newer is required. Cartopy is easiest from conda-forge.
+
+Python 3.9 or newer, Node.js 20 or newer, and pnpm. Cartopy is easiest from conda-forge.
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
+cd frontend
+pnpm install
 ```
 
 If `cartopy` fails to build with pip:
@@ -43,53 +47,97 @@ conda install -c conda-forge cartopy
 pip install -r requirements.txt
 ```
 
-Add Copernicus S3 keys with the **Copernicus credential manager** button at the top right of the app, or create `AWS_Keys.txt` in the project folder:
+## Run locally
+
+From the repository root, start the API:
+
+```bash
+source .venv/bin/activate
+uvicorn backend.main:app --reload --port 8000
+```
+
+In a second terminal:
+
+```bash
+cd frontend
+pnpm dev
+```
+
+Open http://localhost:5173. The Vite dev server proxies `/api` to port 8000.
+
+### Copernicus credentials (TROPOMI download)
+
+Use **Copernicus credentials** in the header, or create `AWS_Keys.txt` in the
+project folder:
 
 ```
 access_key_id: YOUR_ACCESS_KEY
 secret_access_key: YOUR_SECRET_KEY
 ```
 
-Generate keys at https://eodata-s3keysmanager.dataspace.copernicus.eu/. `AWS_Keys.txt` stays local and is gitignored.
-
-Then start the app:
-
-```bash
-python app.py
-```
-  
-  
-## Internal default settings
-The datasets are the Level-2 user products from the TROPOMI instrument onboard the Sentinel-5P satellite. Original data files are obtained from the Sentinels Scientific Data Hub (currently known as The Copernicus Open Access Hub). The atmospheric methane concentrations are indicated by the column averaged dry air mole mixing ratio of methane (XCH4) with the unit of ppb. For each data file, the methane_mixing_ratio_bias_corrected was retrieved and remapped on a 0.05-deg by 0.05-deg map. To ensure that the remapped observations are valid, only quality assured data points (i.e., the qa_value greater than 0.5, as recommended by the data provider) were used in the plume screening and mapping. The basic workflow in this toolkit is 1) automatically downloading TROPOMI data files, 2) loading methane observations, 3) segmenting methane anomaly, 4) recording suspect methane emitting region, and 5) finalizing results.
-The plume screening algorithm originally proposed by Lauvaux et al. (2022) and was simplified to screen the suspect methane plumes and highlight the regions with high probability of detecting methane ultra emitters. In the plume screening algorithm, the suspect plume screening is patch-based. The geographic span of each patch is 0.5-deg by 0.5-deg (roughly 55km by 55km at the low latitudes). For each patch, the mean, median, and standard deviation of the observed XCH4 is calculated to assess the distributions of methane observations and further find the anomaly to indicate the presence of suspect methane plumes. 
-
-### Background XCH4 
-Determination of the background XCH4 is critical for the patch-based plume screening, considering this could significantly influence the calculations of methane enhancement. In contrast to taking the value of the pixel in the vicinity of a detected plume in the upwind direction, the background XCH4 during the patch-based plume screening in this toolkit is computed according to a matrix $$((XCH4,mean- XCH4,median)/ XCH4,std)$$ indicating the skewness of the pixel distribution. For the patches with XCH4 values are strongly skewed $$((XCH4,mean- XCH4,median)/ XCH4,std > 0.3)$$, background XCH4 is the median of the patch. Otherwise, the background XCH4 is computed as. This method is commonly used for robust background estimation in noisy astronomical images analysis. The  s a tunable parameter, which is typically set at 2.5 to successfully capture some of the well-known methane emission events (Lauvaux et al., 2022).
-
-## User defined parameters 
-A well-fitted plume shape is another factor that may influence the identification of the methane emission plume. In respect of plume shape, two parameters are used to reflect the fitness of the detected anomalies to a suspect plume, which are the mean XCH4 enhancement over the pixels with positive enhancements (ΔXCH4,thr) and the number of valid pixels with positive enhancements (n). Under the conditions that these two parameters fulfilled the requirements, a suspect plume will be tagged. The users could define these two parameters based on their demand to obtain either conservative or radical results (e.g., the larger values for ΔXCH4,thr and n, the more conservative results would be). 
+Generate keys at https://eodata-s3keysmanager.dataspace.copernicus.eu/.
+`AWS_Keys.txt` stays local and is gitignored.
 
 ## Quick guide
-### Select the date
-Please specify an individual date or a period for daily screening Multiple days screening may cause longer data processing time. 
-Note: If a period is selected, only the screening result of the last day will be displayed on the webpage. For full list of the daily screening results, check the local path: ~/TROPOMI_Daily_Screening_Toolkit-main/assets.
-### Define regions
-Currently the toolkit only supports screening over a rectangular region. Draw a rectangle on the map.
-Longitude range: -180 ~ 180, latitude range: -90 ~ 90.
-### Download Level-2 TROPOMI methane observations
-Click <Download> to download the data files to the local path: ~/TROPOMI_Daily_Screening_Toolkit-main/TROPOMI_data.
-### Start screening
-Enter the Threshold delta (ΔXCH4,thr) and Minimum pixel count (n). Then click <Start screening> to kick off the daily plume screening. The screening time may vary with region size and number of days. Please do NOT hit on <Start screening> multiple times. Thanks for your patience.
 
-## About the screening results:
-If any suspect methane plumes are detected, a methane concentration map with the highlighted plume patches will be provided in the tool. If applicable, the potential locations of the detected methene emissions sources would be provided in the format of .csv file. The users could retrieve the results, including the maps and list of suspect sources, from the local path: ~/TROPOMI_Daily_Screening_Toolkit-main/assets
-- The daily averaged methane mixing ratio is calculated based on multiple observations from the TROPOspheric Monitoring Instrument (TROPOMI, i.e., satellite instrument on board the Copernicus Sentinel-5 Precursor satellite. Only valid observations (i.e., observations with qa_value greater than 0.5) were used. However, data filtering by qa_value could not guarantee that all the bad data points are eliminated.
-- The location of the suspect plume is determined as patch based. For each 11×11 patch, we tag the grid cell (0.05° × 0.05°) with the maximum observed XCH4 as the potential location of the detected plume. As limited by the spatial resolution of TROPOMI observations (i.e., 7 km × 5.5 km) and the completeness of the plume puzzles, the "locations" indicated by this toolkit refer to the suspect regions with higher probability of detecting methane emissions.
+1. Draw a rectangle on the map.
+2. Choose a time window (date range or a last-N-days chip).
+3. Carbon Mapper and MARS load for that region and window. Toggle layers in the left panel.
+4. Select a plume on the map or in the list to see time, instrument, emission,
+   attribution, and (when Carbon Mapper publishes one) the plume image.
+5. For TROPOMI: save Copernicus keys, click **Download Level-2**, set the
+   enhancement threshold and minimum pixel count, then **Start screening**.
+   The last day's XCH4 grid is drawn on the map; hotspot rows join the plume list.
+
+MARS data is published 30 or more days after detection. The zip is cached under
+`MARS_data/` and refreshed at most once a week. Carbon Mapper images are loaded
+from the provider CDN and are not stored locally.
+
+## Tests
+
+```bash
+python -m unittest discover -s tests -t .
+python -m unittest discover -s backend/tests -t .
+cd frontend && pnpm test && pnpm lint && pnpm build
+```
+
+## Internal default settings (TROPOMI)
+
+The datasets are the Level-2 user products from the TROPOMI instrument onboard
+the Sentinel-5P satellite. Atmospheric methane is the column averaged dry air
+mole mixing ratio of methane (XCH4) in ppb. For each file,
+`methane_mixing_ratio_bias_corrected` is remapped on a 0.05° by 0.05° grid.
+Only quality-assured points (`qa_value` greater than 0.5) are used.
+
+The plume screening algorithm originally proposed by Lauvaux et al. (2022) is
+simplified to highlight regions with high probability of detecting methane
+ultra emitters. Screening is patch-based. Each patch is 0.5° by 0.5° (roughly
+55 km by 55 km at low latitudes). This toolkit is not designed to pinpoint
+facility- or component-level sources, or to screen small leaks (generally
+<25 tons/hour).
+
+### Background XCH4
+
+Background is computed from the skewness of the patch,
+`((XCH4,mean - XCH4,median) / XCH4,std)`. Strongly skewed patches
+(skewness > 0.3) use the median; otherwise a robust estimator with a typical
+clipping parameter of 2.5 is used (Lauvaux et al., 2022).
+
+### User defined parameters
+
+Two parameters control how closely an anomaly must resemble a plume: mean
+XCH4 enhancement over positive pixels (ΔXCH4,thr, default 15 ppb) and the
+number of valid positive pixels (n, default 1). Larger values are more
+conservative.
+
+Screening maps and CSVs are still written to `./assets`.
 
 ## Feedback
-For any questions and concerns may you have about this toolkit, please feel free to get in touch with zhenyu.xing2@ucalgary.ca and mozhou.gao@ucalgary.ca.
+
+zhenyu.xing2@ucalgary.ca and mozhou.gao@ucalgary.ca.
 
 ## References
-Lauvaux, T., Giron, C., Mazzolini, M., d’Aspremont, A., Duren, R., Cusworth, D., Shindell, D. and Ciais, P., 2022. Global assessment of oil and gas methane ultra-emitters. Science, 375(6580), pp.557-561.
 
-
+Lauvaux, T., Giron, C., Mazzolini, M., d’Aspremont, A., Duren, R., Cusworth, D.,
+Shindell, D. and Ciais, P., 2022. Global assessment of oil and gas methane
+ultra-emitters. Science, 375(6580), pp.557-561.

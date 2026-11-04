@@ -75,7 +75,19 @@ class PlumeEndpointTests(unittest.TestCase):
         self.assertIn("HTTP 503", response.json()["detail"])
 
     def test_sources_are_registered(self):
-        self.assertEqual(set(main.PLUME_SOURCES), {"carbonmapper", "mars"})
+        self.assertEqual(
+            set(main.PLUME_SOURCES),
+            {
+                "carbonmapper",
+                "mars",
+                "ghgsat",
+                "cusworth",
+                "ghgrp_us",
+                "ghgrp_ca",
+                "nesser",
+                "canada_nir",
+            },
+        )
 
 
 if __name__ == "__main__":
