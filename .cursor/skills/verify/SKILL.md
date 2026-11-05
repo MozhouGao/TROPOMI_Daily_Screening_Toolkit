@@ -17,12 +17,13 @@ before trusting a merge path; `merge-pr` still requires CI green separately.
 Replace placeholders with this repo’s real commands. Keep this table honest —
 do not claim a gate you cannot run.
 
-| Gate | Required | Command (edit me) |
-|------|----------|-------------------|
-| lint | yes | `pnpm --filter ws-emission-dashboard lint` |
-| typecheck | yes | `pnpm --filter ws-emission-dashboard exec tsc --noEmit` |
-| test | yes | `pnpm --filter ws-emission-dashboard test` |
-| build | optional | `pnpm --filter ws-emission-dashboard build` |
+| Gate | Required | Command |
+|------|----------|---------|
+| python-tests | yes | `python -m unittest discover -s tests -t . && python -m unittest discover -s backend/tests -t .` |
+| lint | yes | `pnpm --dir frontend lint` |
+| typecheck | yes | `pnpm --dir frontend typecheck` |
+| test | yes | `pnpm --dir frontend test` |
+| build | optional | `pnpm --dir frontend build` |
 
 Add/remove rows to match the product. Mark optional gates explicitly.
 

@@ -263,10 +263,7 @@ def _grid_indices(lats, lons, grid_latitudes, grid_longitudes):
 
 
 def _list_orbit_files(data_path, date_str):
-    if not os.path.isdir(data_path):
-        raise FileNotFoundError(
-            f"TROPOMI_data folder not found at {data_path}. Download files first."
-        )
+    os.makedirs(data_path, exist_ok=True)
     matches = []
     for filename in os.listdir(data_path):
         full_path = os.path.join(data_path, filename)
@@ -518,12 +515,8 @@ def unique_hotspots(detected_plumes, detected_plume_wind, detected_plume_pressur
     return polygons, max_enhance, max_lons, max_lats, max_winds, max_pressures
 
 
-def generate_results(grid_lon, grid_lat, fch4, detected_plumes, detected_plume_wind,
-                     detected_plume_pressure, detected_plumes_lons, detected_plumes_lats, date_str):
-    import matplotlib.pyplot as plt
-    import cartopy.crs as ccrs
-    import cartopy.feature as cf
-
+def hotspot_records(detected_plumes, detected_plume_wind, detected_plume_pressure,
+                    detected_plumes_lons, detected_plumes_lats, date_str):
     polygons, max_enhance, max_lons, max_lats, max_winds, max_pressures = unique_hotspots(
         detected_plumes,
         detected_plume_wind,
@@ -531,7 +524,73 @@ def generate_results(grid_lon, grid_lat, fch4, detected_plumes, detected_plume_w
         detected_plumes_lons,
         detected_plumes_lats,
     )
-    Q = quantification_mass_balance(max_enhance, max_winds, max_pressures, max_lons, max_lats)
+    rates = quantification_mass_balance(max_enhance, max_winds, max_pressures, max_lons, max_lats)
+    records = []
+    for index, (enhance, lon, lat, rate) in enumerate(
+        zip(max_enhance, max_lons, max_lats, rates), start=1
+    ):
+        records.append({
+            "id": f"{date_str}-{index}",
+            "lon": float(lon),
+            "lat": float(lat),
+            "enhancement_ppb": float(enhance),
+            "emission_kg_hr": float(rate),
+        })
+    return records, polygons, max_enhance, max_lons, max_lats, rates
+
+
+def grid_overlay_png(grid_lon, grid_lat, fch4):
+    import base64
+    import io
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    if np.size(fch4) == 0 or np.all(np.isnan(fch4)):
+        return None
+    west = float(np.nanmin(grid_lon))
+    east = float(np.nanmax(grid_lon))
+    south = float(np.nanmin(grid_lat))
+    north = float(np.nanmax(grid_lat))
+    cmap = plt.get_cmap("bwr").copy()
+    cmap.set_bad(alpha=0)
+    fig, ax = plt.subplots(figsize=(4, 4), dpi=80)
+    ax.imshow(
+        fch4,
+        origin="upper",
+        cmap=cmap,
+        aspect="auto",
+        extent=(west, east, south, north),
+        interpolation="nearest",
+    )
+    ax.set_axis_off()
+    fig.subplots_adjust(0, 0, 1, 1)
+    buffer = io.BytesIO()
+    fig.savefig(buffer, format="png", transparent=True, bbox_inches="tight", pad_inches=0)
+    plt.close(fig)
+    return {
+        "image_url": "data:image/png;base64," + base64.b64encode(buffer.getvalue()).decode("ascii"),
+        "west": west,
+        "south": south,
+        "east": east,
+        "north": north,
+    }
+
+
+def generate_results(grid_lon, grid_lat, fch4, detected_plumes, detected_plume_wind,
+                     detected_plume_pressure, detected_plumes_lons, detected_plumes_lats, date_str):
+    import matplotlib.pyplot as plt
+    import cartopy.crs as ccrs
+    import cartopy.feature as cf
+
+    records, polygons, max_enhance, max_lons, max_lats, rates = hotspot_records(
+        detected_plumes,
+        detected_plume_wind,
+        detected_plume_pressure,
+        detected_plumes_lons,
+        detected_plumes_lats,
+        date_str,
+    )
 
     target = os.path.abspath(os.path.join(os.getcwd(), "assets"))
     os.makedirs(target, exist_ok=True)
@@ -560,15 +619,19 @@ def generate_results(grid_lon, grid_lat, fch4, detected_plumes, detected_plume_w
     plt.close(fig)
 
     df = pd.DataFrame({
-        "Plume ID": range(len(max_enhance)),
+        "Plume ID": [record["id"] for record in records],
         "Maximum Enhancement (ppb)": max_enhance,
         "longitude": max_lons,
         "latitude": max_lats,
-        "Emission rate (kg/hr)": Q,
+        "Emission rate (kg/hr)": rates,
     })
     df.to_csv(os.path.join("assets", f"plumes_{date_str}_{maxlon}_{minlon}_{maxlat}_{minlat}.csv"),
               sep=",", index=False)
-    return figure_name
+    return {
+        "figure_path": figure_name,
+        "hotspots": records,
+        "overlay": grid_overlay_png(grid_lon, grid_lat, fch4),
+    }
 
 
 def find_indices(target_lon, target_lat, X, Y):

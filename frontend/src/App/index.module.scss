@@ -1,0 +1,46 @@
+.shell {
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr) 420px;
+  grid-template-rows: 48px minmax(0, 1fr);
+  grid-template-areas:
+    'header header header'
+    'left center right';
+  height: 100vh;
+  background: #fff;
+}
+
+.header {
+  grid-area: header;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 16px;
+  border-bottom: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+
+.headerActions {
+  margin-left: auto;
+}
+
+.brand {
+  margin: 0 !important;
+  color: #415f4a !important;
+}
+
+.left {
+  grid-area: left;
+  overflow-y: auto;
+  border-right: 1px solid #e5e7eb;
+}
+
+.center {
+  grid-area: center;
+  min-height: 0;
+}
+
+.right {
+  grid-area: right;
+  overflow-y: auto;
+  border-left: 1px solid #e5e7eb;
+}
