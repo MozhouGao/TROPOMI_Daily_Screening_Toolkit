@@ -5,6 +5,7 @@ import usePlumeLayers, { type LayerQuery } from '@/api/plumes';
 import CredentialManager from '@/components/CredentialManager';
 import LayerPanel from '@/components/LayerPanel';
 import MapView from '@/components/MapView';
+import NewsPanel from '@/components/NewsPanel';
 import PlumeDetail from '@/components/PlumeDetail';
 import PlumeList from '@/components/PlumeList';
 import RegionControl from '@/components/RegionControl';
@@ -77,6 +78,7 @@ const App = () => {
       <aside className={styles.right}>
         <PlumeList plumes={plumes} />
         <PlumeDetail plume={selectedPlume} licenseUrl={selectedLicense} />
+        <NewsPanel />
       </aside>
     </div>
   );

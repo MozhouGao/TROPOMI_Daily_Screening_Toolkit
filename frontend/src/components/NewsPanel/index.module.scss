@@ -1,0 +1,53 @@
+.panel {
+  padding: 12px 14px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.title {
+  margin-top: 0;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.headline {
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.meta {
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.tag {
+  background: #ecfeff;
+  color: #0e7490;
+  border-radius: 4px;
+  padding: 0 6px;
+  font-size: 11px;
+}
+
+.attribution {
+  margin-top: 10px;
+  color: #6b7280;
+  font-size: 12px;
+}

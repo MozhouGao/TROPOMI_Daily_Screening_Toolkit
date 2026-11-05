@@ -11,6 +11,7 @@ from backend.schemas import (
     CredentialWrite,
     DateRange,
     DateWindow,
+    NewsCollection,
     PlumeCollection,
     ScreenRequest,
     SourceError,
@@ -26,6 +27,7 @@ from backend.sources import (
     mars,
     methanesat,
     nesser,
+    news,
     tropomi,
 )
 
@@ -74,6 +76,20 @@ def list_plumes(
     dates = _dates_or_422(start, end)
     try:
         return fetcher(bbox, dates)
+    except SourceError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+
+@app.get("/api/news", response_model=NewsCollection)
+def list_news(
+    west: float = Query(..., ge=-180, le=180),
+    south: float = Query(..., ge=-90, le=90),
+    east: float = Query(..., ge=-180, le=180),
+    north: float = Query(..., ge=-90, le=90),
+) -> NewsCollection:
+    bbox = _bbox_or_422(west, south, east, north)
+    try:
+        return news.fetch_news(bbox)
     except SourceError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 

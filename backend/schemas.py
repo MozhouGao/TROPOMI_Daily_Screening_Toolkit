@@ -100,5 +100,24 @@ class ScreenRequest(CamelModel):
     min_pixels: int = 1
 
 
+class NewsArticle(CamelModel):
+    id: str
+    title: str
+    url: str
+    source: str
+    published_at: Optional[datetime] = None
+    snippet: str = ""
+    basins: List[str] = []
+    attribution: str
+
+
+class NewsCollection(CamelModel):
+    items: List[NewsArticle]
+    total_count: int
+    truncated: bool
+    attribution: str
+    license_url: str
+
+
 class SourceError(Exception):
     """Raised when an upstream provider cannot be read."""

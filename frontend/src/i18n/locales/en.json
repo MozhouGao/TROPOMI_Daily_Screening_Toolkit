@@ -81,5 +81,10 @@
   "tropomi.screen": "Start screening",
   "tropomi.needRegion": "Please define the region.",
   "tropomi.needDate": "Please select a start date.",
-  "tropomi.attribution": "Source: Copernicus Sentinel-5P TROPOMI"
+  "tropomi.attribution": "Source: Copernicus Sentinel-5P TROPOMI",
+  "news.title": "Methane news",
+  "news.empty": "Draw a region to load methane news.",
+  "news.none": "No recent methane headlines for this region.",
+  "news.error": "Could not load news: {message}",
+  "news.attribution": "Headlines via Google News RSS. Link through to the publisher. Not detections."
 }

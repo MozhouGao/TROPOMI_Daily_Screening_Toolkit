@@ -56,3 +56,22 @@ export type CredentialStatus = {
   fileText: string;
   example: string;
 };
+
+export type NewsArticle = {
+  id: string;
+  title: string;
+  url: string;
+  source: string;
+  publishedAt: string | null;
+  snippet: string;
+  basins: string[];
+  attribution: string;
+};
+
+export type NewsCollection = {
+  items: NewsArticle[];
+  totalCount: number;
+  truncated: boolean;
+  attribution: string;
+  licenseUrl: string;
+};

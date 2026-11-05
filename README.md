@@ -15,6 +15,8 @@ Layers:
 - **Canada NIR 2018 grid** — Scarpelli 0.1° inventory cells ≥ 1 kg/hr (default off).
 - **EDF MethaneSAT** — layer listing and terms only (default off). Raw L3/L4 stay on Earth Engine / Google Cloud.
 
+Headlines: `GET /api/news` proxies Google News RSS for methane emissions/leaks in basins that overlap the drawn rectangle. The right sidebar lists publisher links only (not detections). XML is cached under `NEWS_data/` for about 30 minutes.
+
 Carbon Mapper and MARS detections are independent of TROPOMI patch screening.
 They are facility-scale observations with the provider's stated uncertainty.
 Both live catalogs are licensed for **non-commercial** use. See
@@ -24,8 +26,8 @@ Both live catalogs are licensed for **non-commercial** use. See
 Archive layers (GHGSat, GHGRP, Cusworth, Nesser, Canada NIR) ignore the time
 window because they are annual or campaign vintages. US GHGRP CH4 is converted
 from reported tCO2e with AR4 GWP 25. Cache directories (`GHGSat_data/`,
-`GHGRP_data/`, `Cusworth_data/`, `Nesser_data/`, `CanadaNIR_data/`) stay local
-and are gitignored.
+`GHGRP_data/`, `Cusworth_data/`, `Nesser_data/`, `CanadaNIR_data/`,
+`NEWS_data/`) stay local and are gitignored.
 
 ## Installation
 
