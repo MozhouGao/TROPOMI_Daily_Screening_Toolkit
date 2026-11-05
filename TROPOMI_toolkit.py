@@ -263,10 +263,7 @@ def _grid_indices(lats, lons, grid_latitudes, grid_longitudes):
 
 
 def _list_orbit_files(data_path, date_str):
-    if not os.path.isdir(data_path):
-        raise FileNotFoundError(
-            f"TROPOMI_data folder not found at {data_path}. Download files first."
-        )
+    os.makedirs(data_path, exist_ok=True)
     matches = []
     for filename in os.listdir(data_path):
         full_path = os.path.join(data_path, filename)

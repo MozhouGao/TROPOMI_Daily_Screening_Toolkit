@@ -86,6 +86,7 @@ class PlumeEndpointTests(unittest.TestCase):
                 "ghgrp_ca",
                 "nesser",
                 "canada_nir",
+                "methanesat",
             },
         )
 

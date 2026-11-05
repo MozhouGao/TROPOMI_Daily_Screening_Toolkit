@@ -24,6 +24,7 @@ from backend.sources import (
     ghgrp_us,
     ghgsat,
     mars,
+    methanesat,
     nesser,
     tropomi,
 )
@@ -39,6 +40,7 @@ PLUME_SOURCES: Dict[str, PlumeFetcher] = {
     ghgrp_ca.SOURCE_ID: ghgrp_ca.fetch_plumes,
     nesser.SOURCE_ID: nesser.fetch_plumes,
     canada_nir.SOURCE_ID: canada_nir.fetch_plumes,
+    methanesat.SOURCE_ID: methanesat.fetch_plumes,
 }
 
 app = FastAPI(title="Methane Data Screening Toolkit API", version="2.0.0")

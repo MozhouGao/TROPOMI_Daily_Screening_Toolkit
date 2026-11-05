@@ -46,6 +46,7 @@ describe('LayerPanel', () => {
     expect(screen.getByText('GHGSat landfills')).toBeInTheDocument();
     expect(screen.getByText('US GHGRP facilities')).toBeInTheDocument();
     expect(screen.getByText('Canada GHGRP facilities')).toBeInTheDocument();
+    expect(screen.getByText('EDF MethaneSAT')).toBeInTheDocument();
     expect(
       screen.getByText('Showing 0 of 237. Narrow the region or time window.'),
     ).toBeInTheDocument();

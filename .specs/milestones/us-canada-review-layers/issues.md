@@ -12,4 +12,4 @@
 | 8 | Frontend registry, i18n, swatches, copy | Done | kinds + count labels |
 | 9 | README and cache gitignore | Done | licenses and archival date note |
 | 10 | EPA gridded GHGI inventory overlay | Planned | Maasakkers v3 NetCDF, 0.1° CONUS; same cache + bbox + cap as Canada NIR. Do not implement until this slice is picked up. |
-| 11 | MethaneSAT (EDF / GEE) evaluation | Evaluating | Feasibility in progress. Not confirmed as a layer. Blocked on request-form grant + license (no raw L3/L4 to end users). |
+| 11 | MethaneSAT (EDF / GEE) layer listing | Done | Dashboard layer only. Empty catalog + attribution; no raw L3/L4 from GEE. |

@@ -87,6 +87,15 @@ export const LAYER_REGISTRY: readonly LayerDefinition[] = [
     defaultEnabled: false,
   },
   {
+    id: 'methanesat',
+    kind: 'catalog',
+    labelKey: 'layers.methanesat',
+    freshnessKey: 'layers.methanesat.freshness',
+    disclaimerKey: 'detail.methanesat',
+    color: '#0e7490',
+    defaultEnabled: false,
+  },
+  {
     id: 'tropomi',
     kind: 'screening',
     labelKey: 'layers.tropomi',

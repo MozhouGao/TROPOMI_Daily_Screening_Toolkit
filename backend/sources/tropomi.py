@@ -96,8 +96,8 @@ def screen_region(
             grid_lon, grid_lat, fch4, fwind, fpressure = load_ch4(
                 bbox.south, bbox.north, bbox.west, bbox.east, screening_date, qa_pass=0.5
             )
-        except FileNotFoundError as exc:
-            raise SourceError(str(exc)) from exc
+        except FileNotFoundError:
+            continue
         screened_days += 1
         detected = screen(
             fch4, fwind, fpressure, grid_lon, grid_lat, threshold_delta, min_pixels
@@ -118,7 +118,10 @@ def screen_region(
             items.extend(_as_plume(record, observed_at) for record in result["hotspots"])
 
     if screened_days == 0:
-        message = "No dates to screen."
+        message = (
+            "No TROPOMI L2 files in TROPOMI_data for this window. "
+            "Use Download Level-2 first, then screen again."
+        )
     elif plume_days == 0:
         message = "No ultra-emitter event detected in your region."
     else:

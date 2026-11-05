@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 
 from TROPOMI_toolkit import grid_overlay_png, hotspot_records
 from backend import main
-from backend.schemas import BBox, CredentialStatus, CredentialWrite, DateRange, SourceError, TropomiScreenResult
+from backend.schemas import BBox, CredentialStatus, CredentialWrite, DateRange, TropomiScreenResult
 from backend.sources import tropomi
 
 
@@ -112,16 +112,18 @@ class ScreenTests(unittest.TestCase):
         self.assertEqual(result.overlay.image_url, "data:image/png;base64,aaa")
         self.assertIn("Suspect plumes", result.message)
 
-    def test_missing_files_are_source_errors(self):
+    def test_missing_files_return_empty_result(self):
         def load_ch4(*_args, **_kwargs):
             raise FileNotFoundError("No TROPOMI CH4 files")
 
-        with self.assertRaises(SourceError):
-            tropomi.screen_region(
-                BBox(-114.2, 51.0, -113.8, 51.2),
-                DateRange(date(2026, 6, 1), date(2026, 6, 1)),
-                load_ch4=load_ch4,
-            )
+        result = tropomi.screen_region(
+            BBox(-114.2, 51.0, -113.8, 51.2),
+            DateRange(date(2026, 6, 1), date(2026, 6, 1)),
+            load_ch4=load_ch4,
+        )
+        self.assertEqual(result.screened_days, 0)
+        self.assertEqual(result.items, [])
+        self.assertIn("Download Level-2", result.message)
 
 
 def _empty_screen():

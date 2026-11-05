@@ -13,6 +13,7 @@ Layers:
 - **Cusworth landfills 2024** — US landfill aircraft campaign with GHGRP IDs (default off).
 - **Nesser landfills 2019** — TROPOMI inversion posteriors (default off).
 - **Canada NIR 2018 grid** — Scarpelli 0.1° inventory cells ≥ 1 kg/hr (default off).
+- **EDF MethaneSAT** — layer listing and terms only (default off). Raw L3/L4 stay on Earth Engine / Google Cloud.
 
 Carbon Mapper and MARS detections are independent of TROPOMI patch screening.
 They are facility-scale observations with the provider's stated uncertainty.

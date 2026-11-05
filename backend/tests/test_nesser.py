@@ -44,6 +44,18 @@ class NesserTests(unittest.TestCase):
             )
         self.assertEqual([plume.id for plume in collection.items], ["1007520"])
 
+    def test_midwest_site_is_outside_western_canada_box(self):
+        western = BBox(west=-127.96, south=42.31, east=-100.18, north=58.39)
+        midwest_only = "\n".join(CSV.strip().splitlines()[:2]) + "\n"
+        with tempfile.TemporaryDirectory() as tmp:
+            collection = nesser.fetch_plumes(
+                western,
+                DateRange(date(2026, 1, 1), date(2026, 1, 31)),
+                cache_dir=tmp,
+                fetch=lambda url: midwest_only.encode("utf-8"),
+            )
+        self.assertEqual(collection.items, [])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -41,6 +41,17 @@ class CusworthTests(unittest.TestCase):
             )
         self.assertEqual([plume.id for plume in collection.items], ["GAO20211026t174729p0000-B"])
 
+    def test_western_canada_box_is_outside_campaign_extent(self):
+        western = BBox(west=-127.96, south=42.31, east=-100.18, north=58.39)
+        with tempfile.TemporaryDirectory() as tmp:
+            collection = cusworth.fetch_plumes(
+                western,
+                DateRange(date(2026, 1, 1), date(2026, 1, 31)),
+                cache_dir=tmp,
+                fetch=lambda url: CSV.encode("utf-8"),
+            )
+        self.assertEqual(collection.items, [])
+
 
 if __name__ == "__main__":
     unittest.main()

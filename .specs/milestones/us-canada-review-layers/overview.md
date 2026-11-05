@@ -16,7 +16,7 @@ self-reported facilities and US/Canada inventory grids.
 | Canada GHGRP landfill / facility points | ECCC Data Mart GHGRP CSV, latest reference year | Self-reported facility CH4 (includes waste NAICS). Reported CH4 tonnes → kg/hr. | Done |
 | Canada NIR overlay | Scarpelli et al. 2018 gridded NIR; [10.7910/DVN/CC3KLO](https://doi.org/10.7910/DVN/CC3KLO) | 0.1° cells (solid waste, wastewater, residential combustion, oil/gas leakage) ≥ 1 kg/hr. Inventory overlay. | Done |
 | EPA GHGI overlay | Maasakkers et al. gridded US GHGI v3; Zenodo [16782734](https://doi.org/10.5281/zenodo.16782734) | 0.1° CONUS annual CH4 (2012–2022, 34 source categories) as inventory cells, same pattern as Canada NIR. Complements GHGRP facility points with a spatial bottom-up grid. | Planned (not implemented) |
-| MethaneSAT (EDF, Google Earth Engine) | Publisher catalog `edf-methanesat-ee` (L4 points / L4 area / L3 XCH4; request-gated) | Candidate plume/overlay source alongside Carbon Mapper, MARS, TROPOMI, GHGSat, Cusworth, GHGRP, Nesser, Canada NIR. Feasibility lookup already in progress (GEE Python API or GCP download; license forbids redistributing raw L3/L4). | Evaluating — not confirmed; do not implement until access + license are decided |
+| MethaneSAT (EDF, Google Earth Engine) | Publisher catalog `edf-methanesat-ee` (request-gated) | Dashboard layer listing only: empty `/api/plumes/methanesat` with attribution and terms. Raw L3/L4 stay on GEE/GCP. | Done (listing only; no raw redistribution) |
 
 The four review-paper products above that were previously called out as deferred (GHGRP landfill points, GHGSat landfill catalog, EPA GHGI, Canada NIR) are now in this milestone: the first three rows plus Canada NIR are already shipped in this branch; EPA GHGI remains the open implementation slice.
 
@@ -46,9 +46,8 @@ In:
 
 Out:
 
-- MethaneSAT / MethaneAIR on Earth Engine until evaluation is confirmed
-  (request form, EE or GCP auth, no raw L3/L4 redistribution). Tracked as
-  Evaluating, not an implementation slice.
+- Fetching or redistributing MethaneSAT raw L3/L4 from Earth Engine or GCP
+  (layer listing + attribution only).
 - Nesser city polygons (`summ_cities.csv` has no coordinates).
 - Street-level leak campaign maps, tower networks, EDGAR.
 - New API shapes; every source still returns `PlumeCollection` via
@@ -99,7 +98,7 @@ Out:
 | Canada NIR arrays are 0.1° global; must subset by bbox | Accepted |
 | Cusworth overlaps live Carbon Mapper | Default off |
 | EPA gridded GHGI NetCDF is large; same bbox + cap as Canada NIR | Planned; not implemented |
-| MethaneSAT GEE is request-gated; license forbids serving raw L3/L4 | Evaluating; not in build scope |
+| MethaneSAT GEE is request-gated; license forbids serving raw L3/L4 | Accepted: layer listing only, no raw proxy |
 
 ## References
 

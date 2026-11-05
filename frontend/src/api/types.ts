@@ -7,7 +7,8 @@ export type PlumeSource =
   | 'ghgrp_us'
   | 'ghgrp_ca'
   | 'nesser'
-  | 'canada_nir';
+  | 'canada_nir'
+  | 'methanesat';
 
 export type Plume = {
   id: string;

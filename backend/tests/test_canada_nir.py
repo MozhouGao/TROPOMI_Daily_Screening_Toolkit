@@ -49,6 +49,28 @@ class CanadaNirTests(unittest.TestCase):
         self.assertEqual(collection.source, "canada_nir")
         self.assertEqual({plume.sector for plume in collection.items}, set(canada_nir.SECTORS))
 
+    def test_tiny_file_area_is_replaced_with_cell_geometry(self):
+        lats = np.array([51.05, 51.15])
+        lons = np.array([-114.05, -113.95])
+        packed = np.full((2, 2), 0.0025)
+        area = canada_nir.resolve_area(lats, lons, packed)
+        self.assertGreater(float(np.median(area)), canada_nir.MIN_PLAUSIBLE_AREA_M2)
+        flux = 5e-9
+        rate = flux_kg_m2_s_to_kg_hr(flux, float(area[0, 0]))
+        self.assertGreater(rate, 1.0)
+
+    def test_western_canada_cells_pass_min_rate(self):
+        lons = np.array([-114.05, -110.0])
+        lats = np.array([51.05])
+        flux = np.array([[5e-9, 0.0]])
+        area = canada_nir.cell_area_m2(lats, lons)
+        bbox = BBox(west=-127.96, south=42.31, east=-100.18, north=58.39)
+        plumes = canada_nir.cells_from_grid(
+            lons, lats, flux, area, sector="oil and gas leakage", bbox=bbox
+        )
+        self.assertEqual(len(plumes), 1)
+        self.assertGreater(plumes[0].emission_kg_hr, 1.0)
+
 
 if __name__ == "__main__":
     unittest.main()

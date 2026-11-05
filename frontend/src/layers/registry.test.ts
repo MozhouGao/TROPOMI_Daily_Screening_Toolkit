@@ -14,6 +14,7 @@ describe('LAYER_REGISTRY', () => {
       'ghgrp_ca',
       'nesser',
       'canada_nir',
+      'methanesat',
       'tropomi',
     ]);
     expect(new Set(ids).size).toBe(ids.length);
@@ -29,6 +30,7 @@ describe('LAYER_REGISTRY', () => {
       'ghgrp_ca',
       'nesser',
       'canada_nir',
+      'methanesat',
     ]);
   });
 

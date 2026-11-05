@@ -20,6 +20,9 @@ ATTRIBUTION = "Source: Scarpelli et al. 2022 gridded Canada NIR (2018)"
 LICENSE_URL = "https://doi.org/10.7910/DVN/CC3KLO"
 CACHE_MAX_AGE = timedelta(days=365)
 MIN_KG_HR = 1.0
+MIN_PLAUSIBLE_AREA_M2 = 1.0e6
+METERS_PER_DEG_LAT = 110574.0
+METERS_PER_DEG_LON = 111320.0
 BASE_URL = "http://geoschemdata.wustl.edu/ExtData/HEMCO/CH4/v2022-01/Scarpelli_Canada"
 SECTORS: Dict[str, str] = {
     "solid waste": "can_emis_solid_waste_2018.nc",
@@ -33,6 +36,20 @@ LoadGrid = Callable[[str], Grid]
 
 def default_cache_dir() -> str:
     return os.path.join(os.getcwd(), "CanadaNIR_data")
+
+
+def cell_area_m2(lats: np.ndarray, lons: np.ndarray) -> np.ndarray:
+    dlat = abs(float(np.diff(lats).mean())) if lats.size > 1 else 0.1
+    dlon = abs(float(np.diff(lons).mean())) if lons.size > 1 else 0.1
+    lon_m = METERS_PER_DEG_LON * dlon * np.cos(np.radians(lats))
+    return np.outer(lon_m * METERS_PER_DEG_LAT * dlat, np.ones(lons.size))
+
+
+def resolve_area(lats: np.ndarray, lons: np.ndarray, area: np.ndarray) -> np.ndarray:
+    values = np.asarray(area, dtype=float)
+    if values.size == 0 or float(np.nanmedian(values)) < MIN_PLAUSIBLE_AREA_M2:
+        return cell_area_m2(lats, lons)
+    return values
 
 
 def cells_from_grid(
@@ -81,7 +98,7 @@ def read_grid(path: str) -> Grid:
         total_name = next(name for name in dataset.variables if name.endswith("_total"))
         flux = np.asarray(dataset.variables[total_name][:], dtype=float)
         area = np.asarray(dataset.variables["area"][:], dtype=float)
-    return lons, lats, np.squeeze(flux), np.squeeze(area)
+    return lons, lats, np.squeeze(flux), resolve_area(lats, lons, np.squeeze(area))
 
 
 def fetch_plumes(
